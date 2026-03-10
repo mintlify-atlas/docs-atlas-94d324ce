@@ -1,0 +1,330 @@
+---
+title: Environment Variables
+description: Complete reference for configuring Athena ERP backend and frontend
+---
+
+## Backend Environment Variables
+
+The backend API (FastAPI) uses these environment variables, defined in `athena-api/app/config.py`.
+
+### Environment
+
+<ParamField path="ENVIRONMENT" type="string" default="development">
+  Deployment environment. Must be one of:
+  - `development` - Local development mode
+  - `staging` - Staging/testing environment
+  - `production` - Production deployment
+
+  **Important**: Set to `production` for live deployments.
+</ParamField>
+
+### Database
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string using asyncpg driver.
+
+  **Format**: `postgresql+asyncpg://user:password@host:port/database`
+
+  **Examples**:
+  - Local: `postgresql+asyncpg://athena:athena_dev@localhost:5432/athena_db`
+  - Supabase: `postgresql+asyncpg://postgres.xxxx:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
+
+  <Warning>
+    For Supabase, use the **Transaction** pooler port (6543) for Alembic migrations, and either Transaction or Session pooler for the application.
+  </Warning>
+</ParamField>
+
+### Authentication & JWT
+
+<ParamField path="JWT_SECRET" type="string" required>
+  Secret key for signing JWT tokens.
+
+  **Requirements**:
+  - Minimum 32 characters
+  - Use a cryptographically secure random string
+  - Never commit to version control
+
+  **Generate a secure secret**:
+  ```bash
+  python -c "import secrets; print(secrets.token_urlsafe(32))"
+  ```
+
+  <Warning>
+    In production with Supabase, this should match the JWT Secret from Supabase Settings → API
+  </Warning>
+</ParamField>
+
+<ParamField path="JWT_ALGORITHM" type="string" default="HS256">
+  Algorithm for JWT token signing. Default is `HS256` (HMAC-SHA256).
+</ParamField>
+
+<ParamField path="ACCESS_TOKEN_EXPIRE_MINUTES" type="integer" default="30">
+  JWT token expiration time in minutes.
+
+  **Recommendations**:
+  - Development: 60-120 minutes
+  - Production: 15-30 minutes
+</ParamField>
+
+### CORS Configuration
+
+<ParamField path="CORS_ORIGINS" type="string" required>
+  Comma-separated list of allowed origins for Cross-Origin Resource Sharing.
+
+  **Format**: `https://domain1.com,https://domain2.com`
+
+  **Examples**:
+  - Development: `http://localhost:3000,http://localhost:5173`
+  - Production: `https://athena.yourdomain.com,https://app.yourdomain.com`
+
+  <Warning>
+    Never use `*` in production. Always specify exact domains.
+  </Warning>
+</ParamField>
+
+### Supabase (Optional)
+
+These are optional but recommended for production deployments using Supabase.
+
+<ParamField path="SUPABASE_URL" type="string">
+  Supabase project URL.
+
+  **Format**: `https://xxxx.supabase.co`
+
+  Found in Supabase Dashboard → Settings → API
+</ParamField>
+
+<ParamField path="SUPABASE_ANON_KEY" type="string">
+  Supabase anonymous/public API key.
+
+  Found in Supabase Dashboard → Settings → API
+
+  <Info>
+    This key is safe to use in frontend code.
+  </Info>
+</ParamField>
+
+<ParamField path="SUPABASE_SERVICE_ROLE_KEY" type="string">
+  Supabase service role key with elevated permissions.
+
+  Found in Supabase Dashboard → Settings → API
+
+  <Warning>
+    **CRITICAL**: This key bypasses Row Level Security. NEVER expose it in frontend code or client-side builds. Backend only!
+  </Warning>
+</ParamField>
+
+### Cloudflare R2 Storage (Optional)
+
+Required for document upload features (Phase 2+).
+
+<ParamField path="R2_ENDPOINT_URL" type="string">
+  Cloudflare R2 endpoint URL.
+
+  **Format**: `https://xxxx.r2.cloudflarestorage.com`
+
+  Found in Cloudflare Dashboard → R2 → Bucket → Settings
+</ParamField>
+
+<ParamField path="R2_ACCESS_KEY_ID" type="string">
+  R2 access key ID for authentication.
+
+  Created in Cloudflare Dashboard → R2 → Manage R2 API Tokens
+</ParamField>
+
+<ParamField path="R2_SECRET_ACCESS_KEY" type="string">
+  R2 secret access key for authentication.
+
+  <Warning>
+    Keep this secret secure. Treat it like a password.
+  </Warning>
+</ParamField>
+
+<ParamField path="R2_BUCKET_NAME" type="string" default="athena-docs">
+  Name of the R2 bucket for storing uploaded documents.
+</ParamField>
+
+### Error Tracking
+
+<ParamField path="SENTRY_DSN" type="string">
+  Sentry Data Source Name for error tracking.
+
+  **Format**: `https://xxxx@xxxx.ingest.sentry.io/xxxx`
+
+  Optional but highly recommended for production.
+</ParamField>
+
+### Superadmin Creation (CI/CD)
+
+These variables are used by the `create_superadmin.py` script for automated admin user creation.
+
+<ParamField path="SUPERADMIN_ID" type="uuid">
+  UUID for the superadmin user (should match Supabase auth.users id).
+</ParamField>
+
+<ParamField path="SUPERADMIN_EMAIL" type="string">
+  Email address for the superadmin user.
+</ParamField>
+
+<ParamField path="SUPERADMIN_FULL_NAME" type="string">
+  Full name for the superadmin user.
+</ParamField>
+
+<ParamField path="SUPERADMIN_SCHOOL_ID" type="uuid">
+  Optional school UUID to create a membership for.
+</ParamField>
+
+<ParamField path="SUPERADMIN_MEMBERSHIP_ROLES" type="string" default="superadmin">
+  Comma-separated membership roles (e.g., `superadmin,rector`).
+</ParamField>
+
+---
+
+## Frontend Environment Variables
+
+The frontend (React + Vite) uses these environment variables, prefixed with `VITE_`.
+
+<Warning>
+  All `VITE_` prefixed variables are embedded in the client-side bundle and visible to users. Never put secrets here!
+</Warning>
+
+### API Configuration
+
+<ParamField path="VITE_API_URL" type="string" required>
+  Backend API base URL.
+
+  **Examples**:
+  - Local development: `http://localhost:8000`
+  - Production: `https://api.yourdomain.com`
+
+  <Info>
+    No trailing slash. The frontend will append paths like `/api/v1/auth/login`.
+  </Info>
+</ParamField>
+
+### Supabase (Optional)
+
+<ParamField path="VITE_SUPABASE_URL" type="string">
+  Supabase project URL (same as backend `SUPABASE_URL`).
+
+  **Format**: `https://xxxx.supabase.co`
+</ParamField>
+
+<ParamField path="VITE_SUPABASE_ANON_KEY" type="string">
+  Supabase anonymous key (same as backend `SUPABASE_ANON_KEY`).
+
+  <Info>
+    Safe to expose in frontend. This is a public key with limited permissions.
+  </Info>
+</ParamField>
+
+---
+
+## Environment File Examples
+
+### Backend (.env)
+
+```bash
+# Development
+ENVIRONMENT=development
+DATABASE_URL=postgresql+asyncpg://athena:athena_dev@localhost:5432/athena_db
+JWT_SECRET=super-secret-local-dev-key-change-in-prod
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# Production
+ENVIRONMENT=production
+DATABASE_URL=postgresql+asyncpg://postgres.xxxx:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+JWT_SECRET=<your-secure-random-secret-32-chars-minimum>
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+CORS_ORIGINS=https://athena.yourdomain.com
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+R2_ENDPOINT_URL=https://xxxx.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=your-key-id
+R2_SECRET_ACCESS_KEY=your-secret-key
+R2_BUCKET_NAME=athena-docs
+SENTRY_DSN=https://xxxx@xxxx.ingest.sentry.io/xxxx
+```
+
+### Frontend (.env)
+
+```bash
+# Development
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+# Production
+VITE_API_URL=https://api.yourdomain.com
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...
+```
+
+---
+
+## Validation
+
+After configuring environment variables, verify your setup:
+
+### Backend
+
+```bash
+cd athena-api
+
+# Check configuration loads correctly
+python -c "from app.config import settings; print(f'Environment: {settings.environment}')"
+
+# Test database connection
+python -c "from app.database import test_connection; import asyncio; asyncio.run(test_connection())"
+```
+
+### Frontend
+
+```bash
+cd athena-front
+
+# Build the application (will fail if required vars are missing)
+npm run build
+
+# Check bundled variables
+grep -r "VITE_API_URL" dist/
+```
+
+---
+
+## Security Best Practices
+
+1. **Never commit `.env` files** - Add to `.gitignore`
+2. **Use different secrets per environment** - Dev, staging, and prod should have unique secrets
+3. **Rotate secrets regularly** - Especially after team member departures
+4. **Limit access** - Only give service role keys to backend services
+5. **Use secret management** - Consider using services like AWS Secrets Manager, Doppler, or your platform's secret manager
+6. **Audit regularly** - Check who has access to production secrets
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**"JWT decode error"**
+- Ensure `JWT_SECRET` matches between backend and Supabase (if using Supabase auth)
+- Check that the secret is the same in all backend instances
+
+**"CORS policy blocked"**
+- Verify frontend URL is in `CORS_ORIGINS`
+- Ensure no trailing slashes in URLs
+- Check protocol matches (http vs https)
+
+**"Database connection failed"**
+- Verify `DATABASE_URL` format is correct
+- Check database is accessible from your hosting environment
+- For Supabase, ensure you're using the correct pooler port (6543 for Transaction mode)
+
+**"Environment variable not defined"**
+- Confirm variable is set in your hosting platform's dashboard
+- Check variable name matches exactly (case-sensitive)
+- Restart the service after adding new variables

@@ -1,0 +1,561 @@
+---
+title: "Student Role"
+description: "Access to personal academic information, grades, and communications"
+icon: "user-graduate"
+---
+
+The **Student** role provides students with access to their own academic information, grades, schedules, and school communications. This role is designed to promote transparency and help students track their academic progress.
+
+## Permissions
+
+<CardGroup cols={2}>
+  <Card title="Personal Data" icon="id-card">
+    **Permission:** `read:own_data`
+    
+    View your own profile information, contact details, and enrollment status.
+  </Card>
+  
+  <Card title="Academic Grades" icon="chart-line">
+    **Permission:** `read:own_grades`
+    
+    Access your grades, activity scores, and academic performance across all subjects.
+  </Card>
+  
+  <Card title="Class Schedule" icon="calendar-days">
+    **Permission:** `read:schedule`
+    
+    View your class schedule, including subjects, teachers, and room assignments.
+  </Card>
+  
+  <Card title="Communications" icon="envelope">
+    **Permission:** `read:communications`
+    
+    Read announcements, circulars, and messages from school administration.
+  </Card>
+</CardGroup>
+
+<Note>
+  Students can only access their own data. You cannot view information about other students.
+</Note>
+
+## What You Can Do
+
+### View Your Grades
+
+Track your academic performance across all subjects:
+
+<Steps>
+  <Step title="Access Grade Dashboard">
+    From your homepage:
+    
+    1. Click **My Grades** or navigate to **Academic > Grades**
+    2. See overview of all your current courses
+    3. View current average for each subject
+    4. Check overall GPA or average
+  </Step>
+  
+  <Step title="Explore Subject Details">
+    Click on any subject to see:
+    
+    - All graded activities (quizzes, exams, homework, projects)
+    - Your score on each activity
+    - Maximum possible points
+    - Activity weight toward final grade
+    - Teacher comments and feedback
+    - Activity due dates
+    
+    <Tabs>
+      <Tab title="Current Period">
+        View grades for the active grading period (bimester, trimester, etc.)
+      </Tab>
+      <Tab title="Previous Periods">
+        Access historical grades from earlier in the year
+      </Tab>
+      <Tab title="Full Year">
+        See year-to-date performance and cumulative averages
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Understand Your Grade">
+    The system shows:
+    
+    **Numerical Score:** Your grade on the school's scale (typically 1.0-5.0)
+    
+    **Performance Level:** Classification based on score:
+    - **Superior** (4.6-5.0): Excellent understanding
+    - **Alto** (4.0-4.5): Strong performance
+    - **Básico** (3.0-3.9): Satisfactory, passing
+    - **Bajo** (1.0-2.9): Below passing, needs improvement
+    
+    **Calculation Breakdown:** See how your grade is computed:
+    ```
+    Final Grade = (Quiz 1 × 10%) + (Homework × 15%) + 
+                  (Project × 25%) + (Final Exam × 40%) + ...
+    ```
+  </Step>
+  
+  <Step title="Identify Areas for Improvement">
+    Use grades to:
+    - See which assignments hurt your average
+    - Identify subject areas needing more study
+    - Track improvement over time
+    - Plan study priorities
+  </Step>
+</Steps>
+
+<Tip>
+  Check your grades regularly (weekly) to stay aware of your academic standing. Don't wait until the end of the grading period!
+</Tip>
+
+### Check Your Schedule
+
+Know where you need to be and when:
+
+<Tabs>
+  <Tab title="Daily Schedule">
+    View today's classes:
+    
+    1. Navigate to **Schedule** or **My Schedule**
+    2. See list or grid of today's classes
+    3. For each class period, view:
+       - Subject name
+       - Teacher name
+       - Classroom/room number
+       - Start and end time
+    
+    <Info>
+      Your schedule updates automatically if the school makes changes.
+    </Info>
+  </Tab>
+  
+  <Tab title="Weekly Schedule">
+    See your full weekly schedule:
+    
+    - Grid view showing all class periods
+    - Color-coded by subject
+    - Teacher names visible
+    - Recurring vs. special schedule noted
+  </Tab>
+  
+  <Tab title="Subject List">
+    List all your current courses:
+    
+    - Subject name
+    - Teacher assigned
+    - Meeting days/times
+    - Total class hours per week
+  </Tab>
+</Tabs>
+
+### View Attendance Record
+
+Track your attendance history:
+
+<Steps>
+  <Step title="Access Attendance">
+    Go to **Academic > Attendance** or **My Attendance**
+  </Step>
+  
+  <Step title="Review Records">
+    See your attendance by:
+    
+    **By Class:** Attendance for each subject
+    - Present days
+    - Absent days
+    - Tardy arrivals
+    - Excused absences
+    
+    **By Date:** Calendar view showing:
+    - Days you were present
+    - Days you were absent
+    - Partial attendance (late/left early)
+  </Step>
+  
+  <Step title="Check Attendance Rate">
+    View statistics:
+    - Overall attendance percentage
+    - By subject (some teachers track more strictly)
+    - Comparison to school attendance policy
+    
+    <Warning>
+      Many schools require minimum attendance (e.g., 80%) to pass a course. Monitor your attendance to stay above this threshold.
+    </Warning>
+  </Step>
+</Steps>
+
+### Read Announcements
+
+Stay informed about school news:
+
+<AccordionGroup>
+  <Accordion title="School Circulars">
+    Official announcements from administration:
+    
+    - Calendar changes
+    - Important deadlines
+    - School events
+    - Policy reminders
+    - Holiday schedules
+    
+    Access via: **Communications > Announcements**
+  </Accordion>
+  
+  <Accordion title="Teacher Messages">
+    Announcements from your teachers:
+    
+    - Assignment reminders
+    - Class-specific updates
+    - Project guidelines
+    - Test dates
+    
+    These may appear in your dashboard or communications section.
+  </Accordion>
+  
+  <Accordion title="Personal Notifications">
+    Messages directed to you:
+    
+    - Meeting requests
+    - Document requests
+    - Administrative notices
+    
+    You'll see a notification badge when you have unread messages.
+  </Accordion>
+</AccordionGroup>
+
+### Access Personal Information
+
+View your student profile:
+
+<Tabs>
+  <Tab title="Basic Info">
+    Your profile shows:
+    - Full name
+    - Student ID number
+    - Document number and type
+    - Birth date
+    - Current grade level and section
+    - Enrollment status
+  </Tab>
+  
+  <Tab title="Contact Info">
+    See registered contact information:
+    - Home address
+    - Phone numbers
+    - Email address (if provided)
+    - Emergency contacts
+    
+    <Note>
+      If any information is incorrect, ask your parents to contact the school secretary to update it.
+    </Note>
+  </Tab>
+  
+  <Tab title="Guardian Info">
+    View your registered parents/guardians:
+    - Names
+    - Relationship
+    - Contact information
+    - Primary contact designation
+  </Tab>
+</Tabs>
+
+## Dashboard Overview
+
+Your student dashboard provides quick access to key information:
+
+<CardGroup cols={2}>
+  <Card title="Current Grades" icon="graduation-cap">
+    Summary of your current performance:
+    - Overall GPA/average
+    - Grades by subject
+    - Subjects needing attention
+  </Card>
+  
+  <Card title="Upcoming Activities" icon="calendar-check">
+    Next assignments and assessments:
+    - Due dates
+    - Activity type
+    - Subject
+  </Card>
+  
+  <Card title="Today's Schedule" icon="clock">
+    Your classes for today:
+    - Current or next class
+    - Remaining classes
+    - Room numbers
+  </Card>
+  
+  <Card title="Recent Announcements" icon="bullhorn">
+    Latest school communications:
+    - New circulars
+    - Important messages
+    - Unread count
+  </Card>
+</CardGroup>
+
+## Understanding Your Academic Progress
+
+### Grade Calculation Example
+
+Here's how your final grade is calculated:
+
+<Steps>
+  <Step title="Individual Activity Scores">
+    You complete various activities throughout the period:
+    
+    | Activity | Score | Max Points | Weight |
+    |----------|-------|------------|---------|
+    | Quiz 1 | 85 | 100 | 10% |
+    | Quiz 2 | 90 | 100 | 10% |
+    | Homework Avg | 88 | 100 | 15% |
+    | Project | 92 | 100 | 25% |
+    | Final Exam | 87 | 100 | 40% |
+  </Step>
+  
+  <Step title="Weighted Calculation">
+    Each score is multiplied by its weight:
+    
+    ```
+    (85 × 0.10) + (90 × 0.10) + (88 × 0.15) + 
+    (92 × 0.25) + (87 × 0.40) = 88.3
+    ```
+  </Step>
+  
+  <Step title="Scale Conversion">
+    The 88.3 percentage is converted to your school's scale.
+    
+    If your school uses 1.0-5.0:
+    ```
+    88.3% → 4.4 (Alto)
+    ```
+  </Step>
+  
+  <Step title="Performance Level">
+    Your score determines your performance level:
+    - 4.4 falls in the "Alto" range (4.0-4.5)
+    - This is strong performance, above basic
+  </Step>
+</Steps>
+
+### Tracking Progress Over Time
+
+<Tabs>
+  <Tab title="Within a Period">
+    As activities are graded:
+    - Watch your average rise or fall
+    - See impact of each assignment
+    - Calculate what you need on remaining work
+  </Tab>
+  
+  <Tab title="Across Periods">
+    Compare your performance:
+    - First period vs. second period
+    - Identify improvement or decline
+    - Track consistency across subjects
+  </Tab>
+  
+  <Tab title="Year-to-Date">
+    Overall academic trajectory:
+    - Cumulative GPA
+    - Best and weakest subjects
+    - Overall trend (improving/declining)
+  </Tab>
+</Tabs>
+
+## Tips for Success
+
+<AccordionGroup>
+  <Accordion title="Check Grades Regularly">
+    **Weekly grade checks help you:**
+    - Catch errors early (contact teacher if you see a mistake)
+    - Stay aware of your standing
+    - Know when you're at risk
+    - Plan study time effectively
+    - Celebrate improvements
+    
+    Don't wait for report cards to learn about problems!
+  </Accordion>
+  
+  <Accordion title="Understand Grading Weights">
+    **Pay attention to what counts most:**
+    - If exams are 40%, prioritize exam preparation
+    - If participation is 20%, engage in class discussions
+    - If homework is only 10%, don't stress over every assignment
+    
+    Work smarter by focusing on high-weight activities.
+  </Accordion>
+  
+  <Accordion title="Track Your Attendance">
+    **Attendance affects your grades:**
+    - Missing class means missing instruction
+    - Some schools factor attendance into final grades
+    - Chronic absence may prevent you from passing
+    - Colleges look at attendance records
+    
+    If you must be absent, get notes from classmates and ask teachers about missed work.
+  </Accordion>
+  
+  <Accordion title="Read Announcements">
+    **Stay informed to avoid surprises:**
+    - Check announcements daily
+    - Note important dates immediately
+    - Read teacher updates about assignments
+    - Don't miss school event opportunities
+  </Accordion>
+  
+  <Accordion title="Ask for Help Early">
+    **When you see your grade dropping:**
+    - Talk to your teacher about struggling topics
+    - Ask about extra credit opportunities
+    - Request tutoring or study resources
+    - Form study groups with classmates
+    - Tell your parents so they can support you
+    
+    Waiting until the end of the period makes it harder to recover.
+  </Accordion>
+</AccordionGroup>
+
+## Common Questions
+
+<AccordionGroup>
+  <Accordion title="Why don't I see a grade for an assignment?">
+    Several reasons:
+    
+    1. **Not yet graded** - Teacher hasn't entered scores yet
+    2. **Recently submitted** - Allow 1-2 weeks for grading
+    3. **You didn't submit** - Check if you completed the work
+    4. **Technical issue** - Rare, but ask teacher if concerned
+    
+    If it's been more than 2 weeks, politely ask your teacher about the status.
+  </Accordion>
+  
+  <Accordion title="What if I think a grade is wrong?">
+    Follow these steps:
+    
+    1. **Review the activity details** - Check what was expected
+    2. **Check your submitted work** - Verify it was your best effort
+    3. **Read teacher comments** - Often explains the grade
+    4. **Calculate manually** - Ensure it matches rubric
+    5. **Talk to your teacher** - Politely ask for clarification
+    6. **If genuinely wrong** - Teacher can correct errors
+    
+    Approach respectfully and be open to the possibility that the grade is fair.
+  </Accordion>
+  
+  <Accordion title="Can I see grades from previous years?">
+    Typically yes, but depends on school configuration:
+    
+    - Most schools keep historical records accessible
+    - You may see grades from all your enrolled years
+    - Useful for tracking long-term progress
+    - Important for college applications
+    
+    If you can't access old grades, ask your coordinator or school secretary.
+  </Accordion>
+  
+  <Accordion title="Why is my attendance marked absent when I was there?">
+    Attendance errors can happen:
+    
+    1. **Teacher mistake** - Tell teacher immediately so they can correct
+    2. **Late arrival** - You may have been marked absent before arriving
+    3. **Left early** - Partial day may show as absent
+    4. **Wrong class period** - Error in another teacher's record
+    
+    Always report attendance errors the same day if possible.
+  </Accordion>
+  
+  <Accordion title="Can my parents see my grades?">
+    Yes, if they have guardian access:
+    
+    - Parents with system login can view your grades
+    - They see the same information you see
+    - They receive notifications about grade updates
+    - They can access your attendance records
+    
+    This promotes family involvement in your education.
+  </Accordion>
+</AccordionGroup>
+
+## What You Cannot Do
+
+<Warning>
+  **Cannot modify your grades** - Only teachers can enter and change grades.
+</Warning>
+
+<Warning>
+  **Cannot change your attendance** - Only teachers record attendance. Report errors to your teacher.
+</Warning>
+
+<Warning>
+  **Cannot view other students' grades** - Privacy rules prevent access to classmates' academic records.
+</Warning>
+
+<Warning>
+  **Cannot send messages** - Student accounts are typically read-only for communications. Speak to teachers or staff in person.
+</Warning>
+
+<Warning>
+  **Cannot update your profile** - Personal information changes must go through the school secretary.
+</Warning>
+
+## Privacy & Security
+
+### Protect Your Account
+
+<CheckList>
+  <Check>Use a strong, unique password</Check>
+  <Check>Never share your login credentials</Check>
+  <Check>Log out when using shared computers</Check>
+  <Check>Don't leave your account open in computer labs</Check>
+  <Check>Report suspicious activity to administration</Check>
+</CheckList>
+
+### Your Data Rights
+
+Under Colombian law (Ley 1581/2012):
+
+- You have the right to know what data is stored about you
+- You can request corrections to inaccurate information
+- Your academic records are private and protected
+- The school must keep your data secure
+
+<Info>
+  If you have concerns about your data, ask your parents to contact the school rector.
+</Info>
+
+## Getting Help
+
+If you have questions or issues:
+
+<Steps>
+  <Step title="Check System Help">
+    Look for help icons or FAQ sections in the student portal
+  </Step>
+  
+  <Step title="Ask Your Teacher">
+    For grade questions, attendance issues, or subject-specific concerns
+  </Step>
+  
+  <Step title="Contact Coordinator">
+    For broader academic concerns or administrative questions
+  </Step>
+  
+  <Step title="Visit School Office">
+    For technical issues or account problems
+  </Step>
+  
+  <Step title="Tell Your Parents">
+    They can contact school administration on your behalf
+  </Step>
+</Steps>
+
+## Related Information
+
+<CardGroup cols={2}>
+  <Card title="Teacher Role" icon="chalkboard-user" href="/roles/teacher">
+    Understand what teachers can do and see
+  </Card>
+  <Card title="Academic Module" icon="graduation-cap" href="/features/academic">
+    Learn more about the academic system
+  </Card>
+</CardGroup>

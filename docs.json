@@ -1,122 +1,197 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Athena ERP",
+  "theme": "linden",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2563eb",
+    "light": "#60a5fa",
+    "dark": "#1e40af"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Dalesrox/Athena"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Dalesrox/Athena"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/enrollment",
+              "features/students",
+              "features/academic",
+              "features/discipline",
+              "features/communications"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "User Roles",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "roles/overview",
+              "roles/rector",
+              "roles/coordinator",
+              "roles/secretary",
+              "roles/teacher",
+              "roles/student"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Administration",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "admin/school-management",
+              "admin/users",
+              "admin/school-years",
+              "admin/settings"
+            ]
+          },
+          {
+            "group": "Colombian Compliance",
+            "pages": [
+              "compliance/overview",
+              "compliance/simat",
+              "compliance/habeas-data",
+              "compliance/decree-1290"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Authentication",
             "pages": [
-              "api-reference/introduction"
+              "api/auth/overview",
+              "api/auth/supabase-integration"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Enrollments",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/enrollments/list",
+              "api/enrollments/create",
+              "api/enrollments/get",
+              "api/enrollments/update",
+              "api/enrollments/documents"
+            ]
+          },
+          {
+            "group": "Students",
+            "pages": [
+              "api/students/list",
+              "api/students/create",
+              "api/students/get",
+              "api/students/update",
+              "api/students/bulk-upload"
+            ]
+          },
+          {
+            "group": "Academic",
+            "pages": [
+              "api/academic/subjects",
+              "api/academic/grades",
+              "api/academic/attendance",
+              "api/academic/study-plans"
+            ]
+          },
+          {
+            "group": "Discipline",
+            "pages": [
+              "api/discipline/cases",
+              "api/discipline/events",
+              "api/discipline/due-process"
+            ]
+          },
+          {
+            "group": "Communications",
+            "pages": [
+              "api/communications/circulars"
+            ]
+          },
+          {
+            "group": "Schools",
+            "pages": [
+              "api/schools/list",
+              "api/schools/create",
+              "api/schools/settings"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "architecture/stack",
+              "architecture/database",
+              "architecture/multi-tenancy"
+            ]
+          },
+          {
+            "group": "Backend",
+            "pages": [
+              "architecture/backend/fastapi",
+              "architecture/backend/sqlalchemy",
+              "architecture/backend/permissions"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "pages": [
+              "architecture/frontend/react",
+              "architecture/frontend/routing",
+              "architecture/frontend/state-management"
+            ]
+          },
+          {
+            "group": "Infrastructure",
+            "pages": [
+              "architecture/infrastructure/supabase",
+              "architecture/infrastructure/railway",
+              "architecture/infrastructure/cloudflare-r2"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "deployment/overview",
+              "deployment/environment-variables"
+            ]
+          },
+          {
+            "group": "Services",
+            "pages": [
+              "deployment/backend",
+              "deployment/frontend",
+              "deployment/database"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

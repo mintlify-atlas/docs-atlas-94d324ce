@@ -1,0 +1,289 @@
+---
+title: "Due Process Management"
+description: "Manage legal due process procedures for discipline cases"
+---
+
+## Overview
+
+The Athena ERP discipline system is designed to support proper due process procedures as required by Colombian educational law. This ensures that all disciplinary actions are documented, transparent, and follow established legal protocols.
+
+## Due Process Workflow
+
+A typical due process workflow in the system follows these phases:
+
+### 1. Incident Phase
+
+When an incident is first reported, it enters the `incident` phase.
+
+```json
+{
+  "phase": "incident",
+  "severity": "medium",
+  "description": "Initial incident report"
+}
+```
+
+### 2. Investigation Phase
+
+The case moves to `investigation` when formal investigation begins.
+
+<steps>
+  <step title="Document the Investigation">
+    Add investigation events to the case timeline documenting interviews, evidence gathered, and findings.
+  </step>
+  
+  <step title="Add All Participants">
+    Ensure all involved parties (students, witnesses, staff) are added as participants with appropriate roles.
+  </step>
+  
+  <step title="Update Phase">
+    Update the case to set `phase` to `investigation`.
+  </step>
+</steps>
+
+```bash
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "investigation"
+  }'
+```
+
+### 3. Resolution Phase
+
+After investigation, the case moves to `resolution` where decisions are made.
+
+```bash
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "resolution",
+    "resolution_type": "suspension",
+    "resolution_notes": "Suspensión por 3 días según manual de convivencia artículo 15"
+  }'
+```
+
+### 4. Closed Phase
+
+Once all actions are completed, the case is closed.
+
+```bash
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "closed",
+    "closed_at": "2026-03-15T18:00:00Z"
+  }'
+```
+
+## Resolution Types
+
+The system supports various resolution types according to typical Colombian school policies:
+
+| Resolution Type | Description | Typical Use Case |
+|----------------|-------------|------------------|
+| `verbal_warning` | Verbal warning | Minor first-time infractions |
+| `written_warning` | Written warning | Repeated minor infractions |
+| `behavioral_contract` | Behavioral improvement contract | Ongoing behavioral issues |
+| `suspension` | Temporary suspension | Serious infractions |
+| `expulsion` | Expulsion from school | Severe violations |
+| `counseling` | Referral to counseling | Behavioral/emotional support needed |
+| `community_service` | Community service | Restitutive justice approach |
+| `no_action` | No disciplinary action | Insufficient evidence or resolved |
+
+## Escalation Tracking
+
+For cases that require escalation to higher authorities:
+
+```bash
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "escalated_at": "2026-03-12T10:00:00Z"
+  }'
+```
+
+Add an escalation event to document the reason:
+
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "note",
+    "title": "Escalación a rectoría",
+    "body": "Caso escalado a rectoría debido a severidad del incidente",
+    "event_date": "2026-03-12T10:00:00Z"
+  }'
+```
+
+## Complete Due Process Example
+
+Here's a complete workflow for a discipline case with proper due process:
+
+### Step 1: Create Initial Case
+
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incident_date": "2026-03-10",
+    "location": "Cafetería",
+    "description": "Altercado físico entre dos estudiantes",
+    "category": "violence",
+    "severity": "high",
+    "phase": "incident",
+    "participants": [
+      {
+        "student_id": "student-uuid-1",
+        "role_in_case": "involved"
+      },
+      {
+        "student_id": "student-uuid-2",
+        "role_in_case": "involved"
+      }
+    ],
+    "initial_event": {
+      "event_type": "report",
+      "title": "Reporte inicial del docente de turno",
+      "body": "Dos estudiantes tuvieron altercado físico durante el almuerzo",
+      "event_date": "2026-03-10T12:30:00Z"
+    }
+  }'
+```
+
+### Step 2: Begin Investigation
+
+```bash
+# Update to investigation phase
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "investigation"
+  }'
+
+# Add witness
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/participants" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "witness-uuid",
+    "role_in_case": "witness"
+  }'
+
+# Document investigation
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "investigation",
+    "title": "Entrevistas realizadas",
+    "body": "Se entrevistaron ambos estudiantes por separado. Cada uno presenta su versión de los hechos.",
+    "event_date": "2026-03-10T14:00:00Z"
+  }'
+```
+
+### Step 3: Notify Parents
+
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "meeting",
+    "title": "Notificación a padres de familia",
+    "body": "Se contactó telefónicamente a ambas familias para informar del incidente y solicitar reunión presencial.",
+    "event_date": "2026-03-10T15:00:00Z"
+  }'
+```
+
+### Step 4: Apply Resolution
+
+```bash
+# Update case with resolution
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "resolution",
+    "resolution_type": "suspension",
+    "resolution_notes": "Suspensión de 2 días para ambos estudiantes según manual de convivencia artículo 12. Se establece compromiso de mejoramiento."
+  }'
+
+# Document resolution meeting
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "resolution",
+    "title": "Reunión de comité de convivencia",
+    "body": "El comité revisó el caso y determinó aplicar suspensión de 2 días. Se firmaron compromisos de mejoramiento con ambos estudiantes y sus familias.",
+    "event_date": "2026-03-11T10:00:00Z"
+  }'
+```
+
+### Step 5: Follow-up and Close
+
+```bash
+# Document follow-up
+curl -X POST "https://api.athena-erp.com/discipline/cases/{case_id}/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "follow_up",
+    "title": "Seguimiento post-suspensión",
+    "body": "Ambos estudiantes regresaron a clases. Se observa mejora en el comportamiento. Director de grupo realizará seguimiento semanal.",
+    "event_date": "2026-03-15T09:00:00Z"
+  }'
+
+# Close the case
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/{case_id}" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "closed",
+    "closed_at": "2026-03-15T17:00:00Z"
+  }'
+```
+
+## Legal Compliance
+
+<warning>
+**Colombian Law Compliance**: The discipline system is designed to comply with Colombian educational law, specifically:
+- Ley 1620 de 2013 (School Coexistence Law)
+- Decreto 1965 de 2013 (Regulatory decree)
+- Constitutional rights to due process
+
+Always ensure your disciplinary procedures follow your institution's manual de convivencia and applicable law.
+</warning>
+
+## Best Practices
+
+<tip>
+**Document Everything**: Maintain detailed records of all steps in the due process. This protects both the institution and the students' rights.
+</tip>
+
+<tip>
+**Timeline Accuracy**: Record events with accurate timestamps. The event timeline serves as the official record.
+</tip>
+
+<tip>
+**Parent Involvement**: Document all parent notifications and meetings. This demonstrates compliance with due process requirements.
+</tip>
+
+<tip>
+**Participant Roles**: Clearly distinguish between involved students, witnesses, and other participants to maintain clarity in the record.
+</tip>
+
+## Permissions
+
+Due process operations require:
+- `write:due_process` - Full due process management authority
+- `write:convivencia` - School coexistence committee permissions
+- `write:all` - Administrative override

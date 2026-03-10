@@ -1,0 +1,541 @@
+---
+title: 'Decree 1290/2009 Compliance'
+description: 'Academic evaluation and promotion standards'
+icon: 'graduation-cap'
+---
+
+## Overview
+
+**Decreto 1290 de 2009** regulates student evaluation and promotion in basic and secondary education in Colombia. It replaced Decree 230 of 2002 and gives institutions autonomy to define their own evaluation systems within legal parameters.
+
+<Warning>
+  **Institutional Autonomy with Limits**: While schools have flexibility in designing their Sistema Institucional de Evaluación (SIE), they must comply with the minimum requirements established in Decree 1290.
+</Warning>
+
+## Key Requirements
+
+Decree 1290 establishes:
+
+### 1. Evaluation Scale
+
+**National Scale**: Four performance levels
+- **Desempeño Superior** (Superior Performance)
+- **Desempeño Alto** (High Performance)
+- **Desempeño Básico** (Basic Performance)
+- **Desempeño Bajo** (Low Performance)
+
+**Institutional Scale**: Each school defines numeric ranges
+- Must be included in the SIE (Sistema Institucional de Evaluación)
+- Commonly: 1.0 to 5.0 scale
+- Must align with national performance levels
+
+### 2. Evaluation Periods
+
+- Minimum: **Four academic periods** per school year
+- Each period must have defined start/end dates
+- Final report issued at year end
+
+### 3. Promotion Criteria
+
+**Automatic Promotion**: Students advance unless:
+- They fail the same grade for the second consecutive year
+- They fail three or more subjects
+- They accumulate 25% or more unjustified absences
+
+**Recovery Opportunities**:
+- Students with 1-2 failed subjects get recovery activities
+- Final evaluation determines promotion
+- Maximum one additional evaluation opportunity
+
+### 4. Reporting Requirements
+
+**Periodic Reports** (boletines):
+- Issued each academic period
+- Show performance level per subject
+- Include qualitative observations
+- Signed by teacher and institution authority
+
+**Final Certificate**:
+- Comprehensive annual report
+- Lists all subjects with final grades
+- States promotion decision
+- Required for SIMAT and official records
+
+## How Athena Implements Decree 1290
+
+### Database Schema
+
+#### Academic Periods
+
+```sql
+CREATE TABLE academic_periods (
+    id              UUID PRIMARY KEY,
+    school_id       UUID NOT NULL,
+    school_year_id  UUID NOT NULL,
+    number          INT NOT NULL,     -- 1, 2, 3, 4
+    name            TEXT NOT NULL,    -- "Primer Período", "Segundo Período"
+    starts_on       DATE NOT NULL,
+    ends_on         DATE NOT NULL,
+    status          TEXT NOT NULL,    -- 'active', 'closed'
+    UNIQUE (school_id, school_year_id, number)
+);
+```
+
+<Note>
+  **Minimum Four Periods**: Athena enforces that schools configure at least four academic periods per school year to comply with Decree 1290.
+</Note>
+
+#### Grading Scale Configuration
+
+Stored in `school_settings`:
+
+```json
+{
+  "grading_scale": {
+    "min": 1.0,
+    "max": 5.0,
+    "passing_threshold": 3.0,
+    "performance_levels": {
+      "bajo": { "min": 1.0, "max": 2.9, "label": "Desempeño Bajo" },
+      "basico": { "min": 3.0, "max": 3.9, "label": "Desempeño Básico" },
+      "alto": { "min": 4.0, "max": 4.5, "label": "Desempeño Alto" },
+      "superior": { "min": 4.6, "max": 5.0, "label": "Desempeño Superior" }
+    },
+    "rounding_precision": 1,
+    "calculation_method": "weighted_average"  -- or "simple_average"
+  }
+}
+```
+
+#### Activity Scores and Grades
+
+```sql
+CREATE TABLE evaluation_activities (
+    id                   UUID PRIMARY KEY,
+    school_id            UUID NOT NULL,
+    course_offering_id   UUID NOT NULL,  -- Subject for specific class group
+    teacher_assignment_id UUID NOT NULL,  -- Teacher at time of activity
+    academic_period_id   UUID NOT NULL,
+    title                TEXT NOT NULL,
+    activity_type        TEXT NOT NULL,   -- 'quiz', 'exam', 'homework', 'project'
+    weight               NUMERIC(5,2),    -- Percentage weight (0-100)
+    is_gradable          BOOLEAN DEFAULT true,
+    due_at               TIMESTAMPTZ,
+    attachments          JSONB
+);
+
+CREATE TABLE activity_scores (
+    id                     UUID PRIMARY KEY,
+    school_id              UUID NOT NULL,
+    evaluation_activity_id UUID NOT NULL,
+    course_enrollment_id   UUID NOT NULL,  -- Student enrolled in course
+    student_id             UUID NOT NULL,
+    score                  NUMERIC(4,2),   -- e.g., 4.5 (on 1.0-5.0 scale)
+    observations           TEXT,
+    recorded_by            UUID NOT NULL,  -- Teacher user_id
+    recorded_at            TIMESTAMPTZ DEFAULT now(),
+    updated_at             TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (school_id, evaluation_activity_id, course_enrollment_id)
+);
+```
+
+#### Report Cards (Boletines)
+
+```sql
+CREATE TABLE report_cards (
+    id                 UUID PRIMARY KEY,
+    school_id          UUID NOT NULL,
+    enrollment_id      UUID NOT NULL,
+    academic_period_id UUID NOT NULL,
+    items              JSONB NOT NULL,  -- Subject grades and details
+    overall_average    NUMERIC(4,2),
+    status             TEXT NOT NULL,   -- 'draft', 'published'
+    published_at       TIMESTAMPTZ,
+    created_at         TIMESTAMPTZ DEFAULT now(),
+    updated_at         TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (enrollment_id, academic_period_id)
+);
+```
+
+**Report Card Items Structure:**
+
+```json
+{
+  "items": [
+    {
+      "subject_catalog_id": "math-uuid",
+      "subject_name": "Matemáticas",
+      "course_offering_id": "course-uuid",
+      "teacher_assignment_id": "assignment-uuid",
+      "teacher_name": "Laura Martínez",
+      "final_score": 4.3,
+      "performance_level": "alto",
+      "performance_label": "Desempeño Alto",
+      "notes": "Excelente participación en clase. Mejorar resolución de problemas complejos.",
+      "absences": 2,
+      "tardiness": 1
+    },
+    {
+      "subject_catalog_id": "spanish-uuid",
+      "subject_name": "Lengua Castellana",
+      "final_score": 4.7,
+      "performance_level": "superior",
+      "performance_label": "Desempeño Superior",
+      "notes": "Sobresaliente comprensión lectora y producción textual."
+    }
+  ],
+  "overall_average": 4.5,
+  "general_observations": "Estudiante comprometido con desempeño consistente.",
+  "promotion_status": "promoted",
+  "failed_subjects_count": 0,
+  "absences_percentage": 3.2
+}
+```
+
+## Grade Calculation
+
+### Weighted Average Method
+
+Default calculation in Athena:
+
+```python
+def calculate_period_grade(
+    activities: list[Activity],
+    scores: dict[activity_id, score]
+) -> float:
+    """
+    Calculate period grade using weighted average.
+    
+    Args:
+        activities: List of evaluation activities with weights
+        scores: Student scores for each activity
+    
+    Returns:
+        Final grade (e.g., 4.3 on 1.0-5.0 scale)
+    """
+    total_weight = sum(a.weight for a in activities if a.is_gradable)
+    if total_weight == 0:
+        return 0.0
+    
+    weighted_sum = sum(
+        scores[a.id] * a.weight 
+        for a in activities 
+        if a.is_gradable and a.id in scores
+    )
+    
+    return round(weighted_sum / total_weight, 1)  # Round to 1 decimal
+```
+
+**Example:**
+
+| Activity | Weight | Score | Weighted Score |
+|----------|--------|-------|----------------|
+| Quiz 1 | 15% | 4.0 | 0.60 |
+| Homework | 20% | 4.5 | 0.90 |
+| Midterm Exam | 30% | 3.8 | 1.14 |
+| Final Project | 35% | 4.7 | 1.65 |
+| **Total** | **100%** | | **4.29 → 4.3** |
+
+### Performance Level Assignment
+
+```python
+def get_performance_level(score: float, scale_config: dict) -> str:
+    """
+    Map numeric score to performance level.
+    """
+    for level, config in scale_config['performance_levels'].items():
+        if config['min'] <= score <= config['max']:
+            return level
+    return 'bajo'  # Default if no match
+```
+
+## Configuration
+
+### Step 1: Define School Year
+
+Navigate to **Configuración** → **Año Lectivo**
+
+**Required:**
+- Year name (e.g., "2026")
+- Start date (e.g., January 20, 2026)
+- End date (e.g., November 30, 2026)
+
+### Step 2: Configure Academic Periods
+
+**Minimum four periods required:**
+
+| Period | Name | Dates | Weeks |
+|--------|------|-------|-------|
+| 1 | Primer Período | Jan 20 - Mar 28 | 10 |
+| 2 | Segundo Período | Mar 31 - Jun 13 | 11 |
+| 3 | Tercer Período | Jun 16 - Sep 5 | 12 |
+| 4 | Cuarto Período | Sep 8 - Nov 30 | 12 |
+
+<Note>
+  **Flexible Scheduling**: Schools can define period lengths based on their calendar. Athena validates that periods don't overlap and cover the full school year.
+</Note>
+
+### Step 3: Set Grading Scale
+
+Navigate to **Configuración** → **Escala de Calificación**
+
+**Configure:**
+1. Numeric range (typically 1.0 to 5.0)
+2. Passing threshold (typically 3.0)
+3. Performance level ranges:
+   - Bajo: 1.0 - 2.9
+   - Básico: 3.0 - 3.9
+   - Alto: 4.0 - 4.5
+   - Superior: 4.6 - 5.0
+4. Rounding precision (typically 1 decimal place)
+5. Calculation method (weighted or simple average)
+
+<Warning>
+  **SIE Alignment**: Your grading scale configuration must match what's documented in your approved Sistema Institucional de Evaluación (SIE). Discrepancies can cause issues during regulatory inspections.
+</Warning>
+
+## Evaluation Workflow
+
+### Creating Evaluation Activities
+
+1. Teacher navigates to their course
+2. Selects **Nueva Actividad** (New Activity)
+3. Fills out activity form:
+   - Title (e.g., "Quiz de Álgebra Lineal")
+   - Type (quiz, exam, homework, project)
+   - Academic period
+   - Weight percentage
+   - Due date (optional)
+   - Instructions and attachments
+4. Saves activity
+
+### Recording Grades
+
+1. Teacher opens the activity
+2. Views grade entry table (student roster)
+3. Enters scores for each student
+4. Adds individual observations if needed
+5. Saves scores
+
+**Validation:**
+- Scores must be within configured scale (e.g., 1.0-5.0)
+- Decimal precision enforced
+- Cannot modify after period closure (configurable)
+
+### Generating Report Cards
+
+1. **Period Closure**:
+   - Coordinator closes academic period
+   - Triggers automatic grade calculation
+   - Report cards move to "draft" status
+
+2. **Teacher Review**:
+   - Teachers review calculated grades
+   - Add qualitative observations per subject
+   - Note strengths, areas for improvement, recommendations
+
+3. **Publication**:
+   - Coordinator reviews all report cards
+   - Approves and publishes
+   - Students/guardians can view online
+   - PDF generation for printing
+
+<Note>
+  **Automatic Calculation**: Athena automatically calculates period grades based on activity scores and weights. Teachers can override if justified and documented.
+</Note>
+
+## Promotion Analysis
+
+### Year-End Promotion Decision
+
+Athena provides a promotion analysis dashboard:
+
+**Automatic Checks:**
+- ✅ Student passed all subjects (all final grades ≥ 3.0)
+- ⚠️ Student failed 1-2 subjects → **Recovery required**
+- ❌ Student failed 3+ subjects → **Repeat grade**
+- ❌ Absences ≥ 25% → **Review required**
+- ❌ Second consecutive year failing same grade → **Repeat grade**
+
+**Recovery Process:**
+
+1. System flags students needing recovery
+2. Teachers create recovery activities
+3. Student completes recovery work
+4. Teacher evaluates and records recovery grade
+5. If passing, student promoted; if failing, repeats grade
+
+### Promotion Report
+
+Generate at year-end:
+
+```
+Informe de Promoción 2026
+Grado: 10-A
+
+Estudiantes promovidos: 32 (91.4%)
+Estudiantes en recuperación: 2 (5.7%)
+Estudiantes reprobados: 1 (2.9%)
+
+Materias con mayor reprobación:
+1. Matemáticas: 3 estudiantes
+2. Física: 2 estudiantes
+3. Química: 1 estudiante
+```
+
+## Report Card Features
+
+### Digital Report Cards
+
+**Available Online:**
+- Students/guardians log in to view current grades
+- Real-time updates as teachers enter scores
+- Historical report cards accessible
+- Download PDF for official records
+
+### PDF Generation
+
+**Includes:**
+- Institution header (logo, name, resolution)
+- Student identification
+- Period dates
+- Subject-by-subject breakdown:
+  - Subject name
+  - Teacher name
+  - Numeric grade
+  - Performance level
+  - Qualitative observations
+  - Absences/tardiness
+- Overall average
+- General observations
+- Promotion status (year-end report)
+- Signatures (digital or for printing)
+
+### Printing and Distribution
+
+**Options:**
+1. **Individual printing**: Download and print specific student reports
+2. **Batch printing**: Generate PDFs for entire class/grade
+3. **Email delivery**: Send digital reports to guardian emails
+4. **In-app notification**: Alert guardians when reports are published
+
+## Permissions
+
+Access control for academic evaluation:
+
+| Role | Permissions |
+|------|-------------|
+| **Rector** | Full access, approve SIE, override grades |
+| **Coordinator** | View all, close periods, publish reports |
+| **Teacher** | Create activities, enter grades, add observations (own courses only) |
+| **Secretary** | View reports, generate exports |
+| **Student** | View own grades and reports |
+| **Guardian** | View own child's grades and reports (read-only) |
+
+```python
+# From permissions.py
+ROLE_PERMISSIONS = {
+    Role.TEACHER: {"write:grades", "read:own_students"},
+    Role.COORDINATOR: {"read:grades", "write:convivencia", "config:academic"},
+    Role.STUDENT: {"read:own_grades"},
+    Role.GUARDIAN: {"read:own_child"},
+}
+```
+
+## Best Practices
+
+<Card title="Document Your SIE" icon="file-lines">
+  Maintain updated written documentation of your Sistema Institucional de Evaluación:
+  - Grading scale and performance levels
+  - Promotion and recovery criteria
+  - Evaluation methodology per subject area
+  - Parent communication procedures
+  
+  Share with community and get formal approval from governing board.
+</Card>
+
+<Card title="Consistent Grading" icon="balance-scale">
+  Ensure grading consistency:
+  - Train all teachers on the SIE
+  - Use rubrics for major assignments
+  - Calibrate grading across teachers of same subject
+  - Regular teacher meetings to review grade distributions
+</Card>
+
+<Card title="Timely Feedback" icon="clock">
+  Enter grades promptly:
+  - Students should see scores within reasonable time
+  - Parents should have visibility before period closes
+  - Early identification of struggling students for intervention
+  - Avoid grade entry rush at period end
+</Card>
+
+<Card title="Qualitative Observations" icon="message">
+  Use observation fields effectively:
+  - Go beyond "good" or "needs improvement"
+  - Be specific about strengths and weaknesses
+  - Provide actionable recommendations
+  - Maintain professional, constructive tone
+</Card>
+
+## Common Questions
+
+### Can a student fail the same grade twice?
+
+**No.** Decree 1290 Article 6 states that a student cannot repeat the same grade more than once. After the second year, the institution must promote the student with a personalized academic plan.
+
+### How many subjects can a student fail and still be promoted?
+
+**Up to 2 subjects**, provided they complete successful recovery activities. Failing 3 or more subjects requires repeating the grade.
+
+### Can institutions use a different grading scale?
+
+**Yes**, as long as it maps clearly to the four national performance levels (Bajo, Básico, Alto, Superior). Common scales include:
+- 1.0 to 5.0 (most common)
+- 1.0 to 10.0
+- Percentage-based (0-100%)
+
+### What if a teacher disputes a calculated grade?
+
+**Override with justification.** If the automatic calculation doesn't reflect student performance (e.g., due to exceptional circumstances), the teacher can override with:
+- Written justification
+- Coordinator approval (for significant changes)
+- Documentation in student file
+
+### How to handle special needs students (PIAR)?
+
+**Personalized evaluation:** Students with PIAR (Plan Individual de Ajustes Razonables) are evaluated according to their individualized plan:
+- Adjusted evaluation criteria
+- Modified activities and assessments
+- Separate notation in report cards
+- Promotion based on PIAR objectives, not standard scale
+
+Athena supports PIAR data in the `students.piar_data` JSONB field.
+
+## Regulatory References
+
+- **Decreto 1290 de 2009**: Evaluation and promotion regulations
+- **Decreto 1075 de 2015**: Consolidated education sector regulations (includes 1290)
+- **Ley 115 de 1994**: General Education Law
+- **Decreto 1421 de 2017**: Inclusive education framework (PIAR)
+
+### Ministry of Education Guidance
+
+- Evaluation system guidelines: [Search "Decreto 1290" on MEN website]
+- SIE examples and templates
+- Annual evaluation directives
+
+<Note>
+  **Consult Regional Authority**: Some Secretarías de Educación provide additional guidance or templates for SIE implementation. Check with your local educational authority.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Academic Configuration" icon="gear" href="/admin/school-years">
+    Set up periods, grading scale, and subjects
+  </Card>
+  <Card title="Grade Management" icon="chart-line" href="/api/academic/grades">
+    Learn how to enter and manage grades
+  </Card>
+</CardGroup>

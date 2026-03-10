@@ -1,0 +1,376 @@
+---
+title: Discipline & Behavioral Management
+description: Track and manage student behavioral incidents and disciplinary processes
+icon: gavel
+---
+
+The discipline module helps schools document behavioral incidents, manage disciplinary processes, and maintain a complete record of interventions and resolutions while ensuring due process.
+
+## Overview
+
+Discipline cases in Athena ERP provide structured tracking for:
+
+- **Incident reporting** - Document what happened, when, and where
+- **Participant tracking** - Record involved students, staff, and guardians
+- **Case progression** - Track cases through phases from initial report to resolution
+- **Event timeline** - Maintain chronological record of actions and decisions
+- **Due process compliance** - Ensure procedural fairness and documentation
+- **Resolution tracking** - Document outcomes and interventions
+
+<Info>
+The discipline system is designed to support restorative justice approaches and comply with Colombian educational law (particularly due process requirements).
+</Info>
+
+## Creating a Discipline Case
+
+### Initial Incident Report
+
+1. Navigate to **Discipline** → **Cases**
+2. Click **Report Incident**
+3. Enter incident details:
+   - **Incident date** - When the incident occurred
+   - **Location** - Where it happened (classroom, playground, cafeteria, etc.)
+   - **Description** - Detailed narrative of what happened
+   - **Category** - Type of incident (see categories below)
+   - **Severity** - Minor, moderate, or severe
+   - **Initial phase** - Typically "initial_report" or "investigation"
+4. Add participants (see below)
+5. Create initial event documenting the report
+6. Click **Create Case**
+
+### Incident Categories
+
+Common categories:
+- Academic misconduct (cheating, plagiarism)
+- Disrespect or insubordination
+- Disruption of learning environment
+- Physical altercation or fighting
+- Bullying or harassment
+- Property damage
+- Attendance/truancy issues
+- Technology misuse
+- Substance policy violations
+- Safety violations
+
+### Severity Levels
+
+<AccordionGroup>
+  <Accordion title="Minor">
+    First-time, low-impact incidents that can typically be resolved through classroom management or brief interventions.
+    
+    **Examples:**
+    - Minor disruptions
+    - Dress code violations
+    - Tardiness
+    - Forgotten materials
+  </Accordion>
+  
+  <Accordion title="Moderate">
+    Incidents requiring administrative involvement, parent contact, and documented interventions.
+    
+    **Examples:**
+    - Repeated minor violations
+    - Disrespectful behavior
+    - Minor physical altercations
+    - Academic dishonesty
+  </Accordion>
+  
+  <Accordion title="Severe">
+    Serious incidents requiring immediate intervention, formal due process, and potentially significant consequences.
+    
+    **Examples:**
+    - Fighting or assault
+    - Serious bullying or harassment
+    - Threats or dangerous behavior
+    - Substance violations
+    - Major property damage
+  </Accordion>
+</AccordionGroup>
+
+## Case Participants
+
+Every case can involve multiple participants with different roles:
+
+### Adding Participants
+
+When creating or editing a case:
+
+1. Click **Add Participant**
+2. Select participant type:
+   - **Student** - Students involved (offenders or victims)
+   - **Staff** - Teachers or administrators involved
+   - **Guardian** - Parents or guardians contacted
+3. Choose individual from dropdown
+4. Assign role:
+   - Involved student (primary)
+   - Witness
+   - Reporter
+   - Victim
+   - Guardian notified
+   - Administrator handling
+
+<Note>
+A single case can have many participants. For example, a bullying incident might include the student who bullied, the victim, witnesses, the reporting teacher, the principal, and guardians of all students involved.
+</Note>
+
+## Case Progression and Phases
+
+Discipline cases move through phases as they are processed:
+
+<Steps>
+  <Step title="Initial Report">
+    Incident reported by staff member. Basic information documented.
+  </Step>
+  
+  <Step title="Investigation">
+    Gathering facts, interviewing participants, collecting evidence.
+  </Step>
+  
+  <Step title="Review">
+    Administrative review of findings and determination of appropriate response.
+  </Step>
+  
+  <Step title="Due Process">
+    For serious cases: Formal hearing, right to respond, guardian involvement.
+  </Step>
+  
+  <Step title="Resolution">
+    Decision made, consequences applied, interventions implemented.
+  </Step>
+  
+  <Step title="Follow-up">
+    Monitoring student progress, checking intervention effectiveness.
+  </Step>
+  
+  <Step title="Closed">
+    Case concluded, all actions completed.
+  </Step>
+</Steps>
+
+**Updating phase:**
+1. Open case details
+2. Click **Update Case**
+3. Change phase
+4. Add event documenting the phase change (see below)
+5. Click **Save**
+
+<Tip>
+Document each phase transition with an event explaining why and how the case is progressing.
+</Tip>
+
+## Case Events
+
+Events create a chronological timeline of everything that happens during a case:
+
+### Adding Events
+
+1. Open case details
+2. Scroll to **Events** section
+3. Click **Add Event**
+4. Enter:
+   - **Event type** (see types below)
+   - **Event date** - When this action occurred
+   - **Title** - Brief summary
+   - **Body** - Detailed description or notes
+5. Click **Save**
+
+### Event Types
+
+Common event types:
+- **Incident report** - Initial documentation
+- **Investigation notes** - Findings from investigation
+- **Witness statement** - Account from witness
+- **Guardian contact** - Record of parent communication
+- **Student statement** - Student's account or response
+- **Meeting** - Disciplinary conference or hearing
+- **Decision** - Official determination and consequences
+- **Intervention** - Support services or behavioral contract
+- **Follow-up** - Progress check or update
+- **Case closure** - Final notes and case conclusion
+
+<Warning>
+All events are permanent and create an audit trail. Be professional and factual in all documentation.
+</Warning>
+
+## Resolution Types
+
+When resolving a case, document the resolution type:
+
+- **Warning** - Verbal or written warning
+- **Parent conference** - Meeting with guardians
+- **Detention** - After-school or lunch detention
+- **Suspension** - In-school or out-of-school suspension
+- **Behavioral contract** - Written agreement for improvement
+- **Counseling** - Referral to counseling services
+- **Restorative circle** - Mediation with all parties
+- **Skill-building** - Social-emotional learning intervention
+- **Transfer** - Change of class or school
+- **Expulsion** - Permanent removal (rare, serious cases only)
+- **No action** - Investigation determined no violation
+
+**Recording resolution:**
+1. Open case details
+2. Click **Update Case**
+3. Select resolution type
+4. Enter resolution notes (details of consequence or intervention)
+5. Add event documenting the resolution
+6. Set phase to "resolved" or "closed"
+7. Enter closed date if case is finished
+8. Click **Save**
+
+## Searching and Filtering Cases
+
+Find cases quickly using filters:
+
+**Filter by:**
+- **Phase** - View cases in specific phase (e.g., all cases needing review)
+- **Severity** - Focus on severe cases requiring immediate attention
+- **Search** - Text search in description or location
+- **Date range** - Cases from specific time period
+
+**List displays:**
+- Incident date and location
+- Primary student(s) involved
+- Category and severity
+- Current phase
+- Resolution status
+- Created date
+
+## Case Details View
+
+Click any case to see complete information:
+
+### Overview Section
+- Incident date, time, and location
+- Reporter (staff member who created case)
+- Description of incident
+- Category and severity
+- Current phase and status
+
+### Participants Section
+- All involved individuals
+- Roles in the incident
+- Links to student profiles
+
+### Events Timeline
+- Chronological list of all events
+- Type, date, and description
+- Author of each event
+
+### Resolution Section
+- Resolution type
+- Detailed resolution notes
+- Escalation history (if case was escalated)
+- Closure date
+
+## Escalation Process
+
+For cases requiring higher-level review:
+
+1. Open case details
+2. Click **Escalate Case**
+3. Select recipient (coordinator, principal, etc.)
+4. Add escalation reason
+5. Click **Escalate**
+
+Escalated cases:
+- Record escalation timestamp
+- Note who escalated and why
+- Remain visible to all authorized staff
+- Continue through due process phases
+
+## Due Process Compliance
+
+<Note>
+Columbian educational law requires due process ("debido proceso") for disciplinary actions, particularly those involving suspensions or serious consequences.
+</Note>
+
+**Due process requirements:**
+1. **Notification** - Student and guardian informed of charges
+2. **Evidence** - Documentation of incident and investigation
+3. **Right to respond** - Student can present their version
+4. **Fair hearing** - Impartial review of facts
+5. **Proportional response** - Consequence fits the infraction
+6. **Right to appeal** - Ability to contest decision
+
+**Use case events to document:**
+- When and how guardians were notified
+- Student's statement and response
+- Hearing or conference details
+- Decision rationale
+- Appeal process if applicable
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Timely Documentation" icon="clock">
+    Document incidents as soon as possible while details are fresh. Delays can weaken cases and memory fades.
+  </Card>
+  
+  <Card title="Factual Language" icon="file-pen">
+    Use objective, factual descriptions. Avoid opinions, judgments, or emotional language in case records.
+  </Card>
+  
+  <Card title="Complete Records" icon="list-check">
+    Document all steps: investigation, contacts, statements, decisions. Incomplete records undermine due process.
+  </Card>
+  
+  <Card title="Consistent Application" icon="scale-balanced">
+    Apply behavior policies consistently across students and situations. Document any special circumstances.
+  </Card>
+  
+  <Card title="Guardian Communication" icon="comments">
+    Keep guardians informed at every step. Document all parent contacts with dates and summaries.
+  </Card>
+  
+  <Card title="Restorative Focus" icon="handshake">
+    When appropriate, emphasize learning and repair over punishment. Use restorative practices and interventions.
+  </Card>
+</CardGroup>
+
+## Reports and Analytics
+
+**Useful reports to generate:**
+- Incident frequency by category or severity
+- Students with repeat incidents (for intervention)
+- Resolution type effectiveness
+- Average case resolution time
+- Patterns by location, time of day, or grade level
+
+<Tip>
+Regular review of discipline data helps identify systemic issues, allocate resources effectively, and evaluate intervention programs.
+</Tip>
+
+## Permissions
+
+| Action | Required Permission |
+|--------|--------------------|
+| View cases | `write:convivencia` or `write:due_process` or `read:all` |
+| Create cases | `write:convivencia` or `write:due_process` or `write:all` |
+| Update cases | `write:convivencia` or `write:due_process` or `write:all` |
+| Add events | `write:convivencia` or `write:due_process` or `write:all` |
+| Add participants | `write:convivencia` or `write:due_process` or `write:all` |
+| Delete cases | `write:convivencia` or `write:due_process` or `write:all` |
+
+<Info>
+"Convivencia" refers to the Colombian concept of school coexistence and behavioral management.
+</Info>
+
+## Privacy and Security
+
+Discipline records are highly sensitive:
+
+- **Limited access** - Only staff with discipline permissions can view cases
+- **Student privacy** - Records not visible to other students or parents
+- **Audit trails** - System tracks who views and edits each case
+- **Retention policies** - Follow your school's data retention guidelines
+
+<Warning>
+Never discuss case details in public areas or with unauthorized individuals. Maintain strict confidentiality.
+</Warning>
+
+## Related Features
+
+- [Student Management](/features/students) - View student discipline history
+- [Communications](/features/communications) - Notify guardians of incidents
+- [Reports](/features/reports) - Generate discipline analytics and trends

@@ -1,0 +1,294 @@
+---
+title: "Create & Update Schools"
+description: "Create new schools and update school information"
+---
+
+## Create School (Admin)
+
+<api-endpoint method="POST" path="/admin/schools" />
+
+Create a new school in the system. Requires super-admin permissions. School settings are automatically initialized.
+
+### Request Body
+
+<param-field path="name" type="string" required>
+  Official name of the school
+</param-field>
+
+<param-field path="nit" type="string" optional>
+  Tax identification number (NIT) for the school
+</param-field>
+
+<param-field path="resolution" type="string" optional>
+  Official resolution or authorization number from the education ministry
+</param-field>
+
+<param-field path="is_active" type="boolean" default="true">
+  Whether the school should be active in the system
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/admin/schools" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Colegio Santa María",
+    "nit": "900555888-4",
+    "resolution": "Resolución 98765 de 2024",
+    "is_active": true
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "666opq77-rst8-9012-3456-789012345rst",
+  "name": "Colegio Santa María",
+  "nit": "900555888-4",
+  "resolution": "Resolución 98765 de 2024",
+  "is_active": true,
+  "pei_summary": null,
+  "settings": {
+    "school_id": "666opq77-rst8-9012-3456-789012345rst",
+    "pei_summary": null,
+    "simat_settings": {},
+    "branding_settings": {},
+    "security_settings": {},
+    "habeas_data_text": null,
+    "updated_at": "2026-03-10T12:00:00Z"
+  },
+  "created_at": "2026-03-10T12:00:00Z",
+  "updated_at": "2026-03-10T12:00:00Z"
+}
+```
+</response-example>
+
+---
+
+## Update School (Admin)
+
+<api-endpoint method="PATCH" path="/admin/schools/{school_id}" />
+
+Update school information and settings. All fields are optional; only provided fields will be updated.
+
+### Path Parameters
+
+<param-field path="school_id" type="uuid" required>
+  Unique identifier of the school to update
+</param-field>
+
+### Request Body
+
+<param-field path="name" type="string" optional>
+  School name
+</param-field>
+
+<param-field path="nit" type="string" optional>
+  Tax identification number
+</param-field>
+
+<param-field path="resolution" type="string" optional>
+  Official resolution number
+</param-field>
+
+<param-field path="is_active" type="boolean" optional>
+  Active status
+</param-field>
+
+<param-field path="settings" type="object" optional>
+  School settings object with any of the following:
+  - `pei_summary` (string) - PEI summary
+  - `simat_settings` (object) - SIMAT integration settings
+  - `branding_settings` (object) - Branding and visual customization
+  - `security_settings` (object) - Security policies
+  - `habeas_data_text` (string) - Data protection consent text
+</param-field>
+
+<request-example>
+```bash
+curl -X PATCH "https://api.athena-erp.com/admin/schools/987fcdeb-51a2-43d1-b789-123456789abc" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Colegio San Francisco de Asís - Sede Principal",
+    "settings": {
+      "pei_summary": "Formación integral basada en valores franciscanos, excelencia académica y liderazgo social",
+      "simat_settings": {
+        "enabled": true,
+        "institution_code": "123456",
+        "sync_frequency_hours": 24
+      }
+    }
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "name": "Colegio San Francisco de Asís - Sede Principal",
+  "nit": "900123456-7",
+  "resolution": "Resolución 12345 de 2020",
+  "is_active": true,
+  "pei_summary": "Formación integral basada en valores franciscanos, excelencia académica y liderazgo social",
+  "settings": {
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "pei_summary": "Formación integral basada en valores franciscanos, excelencia académica y liderazgo social",
+    "simat_settings": {
+      "enabled": true,
+      "institution_code": "123456",
+      "sync_frequency_hours": 24
+    },
+    "branding_settings": {
+      "primary_color": "#0066CC",
+      "logo_r2_object_key": "school-uuid/school/logos/logo.png"
+    },
+    "security_settings": {
+      "require_2fa": false,
+      "session_timeout_minutes": 480
+    },
+    "habeas_data_text": "Autorizo el tratamiento de datos personales conforme a la Ley 1581 de 2012...",
+    "updated_at": "2026-03-10T12:15:00Z"
+  },
+  "created_at": "2025-01-15T08:00:00Z",
+  "updated_at": "2026-03-10T12:15:00Z"
+}
+```
+</response-example>
+
+---
+
+## Update Current School
+
+<api-endpoint method="PATCH" path="/schools/me" />
+
+Update information for the current school. School administrators can update their own school's information and settings.
+
+### Request Body
+
+Same structure as the admin update endpoint, but operates on the current user's school.
+
+<request-example>
+```bash
+curl -X PATCH "https://api.athena-erp.com/schools/me" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "settings": {
+      "branding_settings": {
+        "primary_color": "#1a73e8",
+        "secondary_color": "#34a853"
+      },
+      "habeas_data_text": "Autorizo el tratamiento de mis datos personales de acuerdo con la política de privacidad del colegio y la Ley 1581 de 2012."
+    }
+  }'
+```
+</request-example>
+
+---
+
+## Delete School (Admin)
+
+<api-endpoint method="DELETE" path="/admin/schools/{school_id}" />
+
+Permanently delete a school and all associated data. Use with extreme caution.
+
+### Path Parameters
+
+<param-field path="school_id" type="uuid" required>
+  Unique identifier of the school to delete
+</param-field>
+
+<warning>
+**Destructive Operation**: This will permanently delete the school and ALL associated data including students, staff, grades, attendance records, and more. This action cannot be undone.
+</warning>
+
+<request-example>
+```bash
+curl -X DELETE "https://api.athena-erp.com/admin/schools/666opq77-rst8-9012-3456-789012345rst" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+</request-example>
+
+## Permissions
+
+| Endpoint | Required Permission |
+|----------|--------------------|
+| Create School | `manage:schools` |
+| Update School (Admin) | `manage:schools` |
+| Update Current School | `config:institution` or `write:all` |
+| Delete School | `manage:schools` |
+
+## Settings Configuration Guide
+
+### SIMAT Settings Example
+
+```json
+{
+  "simat_settings": {
+    "enabled": true,
+    "institution_code": "123456",
+    "municipality_code": "05001",
+    "sync_frequency_hours": 24,
+    "auto_sync_enabled": true
+  }
+}
+```
+
+### Branding Settings Example
+
+```json
+{
+  "branding_settings": {
+    "primary_color": "#0066CC",
+    "secondary_color": "#34A853",
+    "logo_r2_object_key": "school-uuid/school/logos/logo.png",
+    "favicon_r2_object_key": "school-uuid/school/logos/favicon.ico",
+    "files": [
+      {
+        "file_name": "logo.png",
+        "folder": "logos",
+        "r2_object_key": "school-uuid/school/logos/logo.png",
+        "uploaded_at": "2026-03-01T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+### Security Settings Example
+
+```json
+{
+  "security_settings": {
+    "require_2fa": true,
+    "session_timeout_minutes": 480,
+    "password_policy": {
+      "min_length": 8,
+      "require_uppercase": true,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_special": true
+    },
+    "ip_whitelist": []
+  }
+}
+```
+
+## Best Practices
+
+<tip>
+**Incremental Updates**: When updating settings, you only need to include the fields you want to change. Existing settings are preserved.
+</tip>
+
+<tip>
+**Test Settings**: Consider testing security and integration settings in a staging environment before applying them to production.
+</tip>
+
+<info>
+**Automatic Timestamps**: The `updated_at` field is automatically updated whenever school information or settings change.
+</info>

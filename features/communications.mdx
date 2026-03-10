@@ -1,0 +1,426 @@
+---
+title: Communications
+description: Send circulars and official communications to parents, teachers, and staff
+icon: bullhorn
+---
+
+The communications module enables schools to create, distribute, and track official circulars and announcements sent to parents, teachers, and other school community members.
+
+## Overview
+
+Circular broadcasts in Athena ERP provide:
+
+- **Document distribution** - Send PDF circulars to specific audiences
+- **Targeted audiences** - Send to all families, specific grade levels, or individual teachers
+- **Delivery tracking** - See who received and opened circulars
+- **Status management** - Draft, schedule, or send immediately
+- **Secure delivery** - Documents stored securely with access controls
+- **Read receipts** - Track when recipients open circulars
+
+<Info>
+Circulars are primarily PDF documents (permission slips, policy updates, event announcements, etc.) distributed through the Athena ERP platform.
+</Info>
+
+## Creating a Circular
+
+### Basic Process
+
+1. Navigate to **Communications** → **Circulars**
+2. Click **Create Circular**
+3. Fill in circular details:
+   - **Title** - Brief, descriptive title
+   - **PDF file** - Upload the circular document (max 25MB)
+   - **Audience type** - Who should receive this (see below)
+   - **Status** - Draft or send immediately
+   - **Channel** - Delivery method (app, email, or both)
+4. If targeting specific teachers, select recipients
+5. Optionally schedule for later delivery
+6. Click **Create**
+
+<Tip>
+Create circulars as drafts first to review with colleagues before sending. You can edit drafts before sending.
+</Tip>
+
+## Audience Targeting
+
+Choose who receives your circular:
+
+<Tabs>
+  <Tab title="All Families">
+    **Audience type:** `all_families`
+    
+    Sends to all guardians of currently enrolled students.
+    
+    **Use for:**
+    - School-wide announcements
+    - Policy updates affecting all families
+    - Holiday schedules
+    - School events open to everyone
+    
+    **Recipients:**
+    - Primary guardian of each enrolled student
+    - Delivered through their registered contact methods
+  </Tab>
+  
+  <Tab title="Specific Grade Levels">
+    **Audience type:** `grade_levels`
+    
+    Target specific grades or groups of grades.
+    
+    **Use for:**
+    - Grade-level events (field trips, meetings)
+    - Curriculum or schedule changes for specific grades
+    - Grade-specific permission slips
+    - Parent-teacher conference schedules
+    
+    **Configuration:**
+    - Specify grades in `audience_spec`: `[{"grade_level": "6"}, {"grade_level": "7"}]`
+    - System finds all students in those grades
+    - Sends to their primary guardians
+  </Tab>
+  
+  <Tab title="Specific Teachers">
+    **Audience type:** `specific_teachers`
+    
+    Send to selected individual staff members.
+    
+    **Use for:**
+    - Staff-only announcements
+    - Policy updates for teachers
+    - Meeting agendas and minutes
+    - Professional development information
+    
+    **Configuration:**
+    - Select specific teachers from staff list
+    - System creates individual recipient records
+    - Teachers access circular through their account
+  </Tab>
+  
+  <Tab title="Specific Groups">
+    **Audience type:** `specific_groups`
+    
+    Target specific class groups/sections.
+    
+    **Use for:**
+    - Class-specific communications
+    - Extracurricular group notices
+    - Special program announcements
+    
+    **Configuration:**
+    - Specify groups in `audience_spec`: `[{"group_code": "6A"}, {"group_code": "6B"}]`
+    - System finds students in those class groups
+    - Sends to their primary guardians
+  </Tab>
+</Tabs>
+
+## Circular Status Workflow
+
+<Steps>
+  <Step title="Draft">
+    Circular is created but not yet sent.
+    
+    **Actions available:**
+    - Edit details
+    - Replace PDF
+    - Change audience
+    - Delete circular
+    - Send immediately or schedule
+  </Step>
+  
+  <Step title="Scheduled">
+    Circular is scheduled to be sent at a specific date/time.
+    
+    **Actions available:**
+    - Edit schedule time
+    - Convert back to draft
+    - Send immediately
+    
+    **System behavior:**
+    - Background process sends circular at scheduled time
+    - Status changes to "sent" automatically
+    - Recipients created at send time
+  </Step>
+  
+  <Step title="Sent">
+    Circular has been delivered to recipients.
+    
+    **Actions available:**
+    - View delivery statistics
+    - Download recipient list
+    - Resend to specific recipients (if needed)
+    
+    **Cannot be edited** - Sent circulars are locked to maintain record integrity
+  </Step>
+</Steps>
+
+## Delivery Channels
+
+Choose how circulars are delivered:
+
+<CardGroup cols={2}>
+  <Card title="App Notification" icon="mobile">
+    **Channel:** `app`
+    
+    Circular appears in recipient's Athena ERP account.
+    
+    **Pros:**
+    - Immediate delivery
+    - Read receipt tracking
+    - Secure, authenticated access
+    
+    **Best for:**
+    - All circulars where recipients have accounts
+    - Documents requiring confirmation of receipt
+  </Card>
+  
+  <Card title="Email" icon="envelope">
+    **Channel:** `email`
+    
+    PDF sent via email to recipient's registered address.
+    
+    **Pros:**
+    - Reaches recipients without app access
+    - Convenient for mobile viewing
+    - Works with external email clients
+    
+    **Best for:**
+    - Important announcements
+    - Time-sensitive information
+    - Recipients who primarily use email
+  </Card>
+</CardGroup>
+
+<Note>
+Future versions will support multiple channels simultaneously (app + email).
+</Note>
+
+## Viewing Circulars
+
+### For Administrators
+
+Staff with `write:communications` permission see all circulars:
+
+1. Navigate to **Communications** → **Circulars**
+2. View list of all circulars (drafts, scheduled, and sent)
+3. Filter by status
+4. Click any circular to view details
+
+**Circular details show:**
+- Title and file name
+- Creation date and author
+- Audience type and size
+- Status and send date
+- Delivery statistics (sent count, opened count)
+- PDF preview/download
+
+### For Recipients (Teachers)
+
+Teachers with `read:communications` permission see circulars sent to them:
+
+1. Navigate to **Communications** → **Circulars**
+2. See only sent circulars where:
+   - Audience is not teacher-specific (e.g., all families), OR
+   - They are specifically included as a recipient
+3. Click to view circular
+4. System automatically marks as "opened" on first view
+
+<Tip>
+Recipients cannot see draft or scheduled circulars - only sent communications.
+</Tip>
+
+## Tracking Delivery and Engagement
+
+### Recipient List
+
+For sent circulars:
+
+1. Open circular details
+2. Click **View Recipients**
+3. See list of all recipients with:
+   - Name
+   - User ID
+   - Delivery timestamp
+   - Opened timestamp (if applicable)
+   - Channel used
+
+### Delivery Statistics
+
+Circular overview shows:
+- **Recipient count** - Total number of recipients
+- **Opened count** - How many have viewed the circular
+- **Open rate** - Percentage opened
+- **Delivery date** - When sent
+
+<Warning>
+Open tracking only works for in-app delivery. Email opens cannot be tracked reliably.
+</Warning>
+
+## Viewing Circular Content
+
+Recipients can view the PDF directly:
+
+1. Click circular title
+2. Click **View Document**
+3. Choose:
+   - **View inline** - Opens PDF in browser
+   - **Download** - Saves PDF to device
+
+**Security measures:**
+- Content-Security-Policy prevents embedded scripts
+- X-Content-Type-Options prevents MIME sniffing
+- No-store cache control prevents unauthorized caching
+- Authenticated requests only
+
+## Marking Circulars as Opened
+
+For in-app delivery, system automatically tracks opens:
+
+1. Recipient clicks circular
+2. System checks if this is first view
+3. If yes:
+   - Records opened timestamp
+   - Increments opened count on circular
+4. Sender can see updated statistics
+
+<Info>
+Recipients don't need to manually confirm receipt - viewing the circular is sufficient.
+</Info>
+
+## Scheduling Circulars
+
+Schedule circulars for future delivery:
+
+1. When creating circular, select status "scheduled"
+2. Enter scheduled send date/time
+3. Click **Create**
+4. System will automatically send at specified time
+
+**Use cases for scheduling:**
+- Send announcements at optimal times (early morning, end of school day)
+- Prepare multiple circulars in advance
+- Coordinate with event dates
+- Time announcements for specific time zones
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Clear Titles" icon="heading">
+    Use descriptive titles that summarize content. Recipients should know what the circular is about from the title alone.
+  </Card>
+  
+  <Card title="Appropriate Audience" icon="users">
+    Target your audience precisely. Don't send grade-specific information to all families.
+  </Card>
+  
+  <Card title="Quality Documents" icon="file-pdf">
+    Ensure PDFs are clear, readable, and properly formatted. Test on mobile devices before sending.
+  </Card>
+  
+  <Card title="Timely Delivery" icon="clock">
+    Send time-sensitive information well in advance. Use scheduling for optimal delivery times.
+  </Card>
+  
+  <Card title="Track Engagement" icon="chart-line">
+    Monitor open rates. Low engagement may indicate timing, audience, or content issues.
+  </Card>
+  
+  <Card title="Professional Tone" icon="pen-fancy">
+    Maintain professional, clear communication in all circulars. Proofread before sending.
+  </Card>
+</CardGroup>
+
+## Common Circular Types
+
+### Permission Slips
+- Target specific grade levels attending event
+- Include clear deadline for responses
+- Provide contact information for questions
+- Track opens to follow up with non-responders
+
+### Policy Updates
+- Send to all families or specific audiences
+- Include effective date prominently
+- Explain rationale for changes
+- Provide FAQ or contact for questions
+
+### Event Announcements
+- Target appropriate audience (all, grade-level, class group)
+- Include date, time, location clearly
+- Add RSVP or registration instructions
+- Send reminder circular closer to event
+
+### Staff Communications
+- Use "specific_teachers" audience
+- Include meeting agendas, minutes, or policy updates
+- Track opens to ensure all staff are informed
+- Follow up with unopened recipients
+
+## Permissions
+
+| Action | Required Permission |
+|--------|--------------------|
+| Create circulars | `write:communications` or `write:all` |
+| Edit draft circulars | `write:communications` or `write:all` |
+| Send circulars | `write:communications` or `write:all` |
+| View recipient lists | `write:communications` or `write:all` |
+| View sent circulars | `read:communications` or `write:communications` or `read:all` |
+| View circulars sent to self | `read:communications` or `read:all` |
+| Mark as opened | `read:communications` or `read:all` |
+
+<Info>
+Administrators can see all circulars. Teachers only see circulars sent to them (if targeted) or broad announcements.
+</Info>
+
+## File Requirements
+
+**PDF specifications:**
+- **Format:** PDF only
+- **Max size:** 25 MB
+- **Validation:** System checks for valid PDF magic bytes
+- **Security:** Files scanned and validated before upload
+
+**Recommended PDF practices:**
+- Use standard fonts (embedded or system fonts)
+- Optimize file size for mobile viewing
+- Ensure text is selectable (not scanned images)
+- Test on mobile devices before sending
+
+## Privacy and Security
+
+Communications are protected through:
+
+- **Authentication required** - Only logged-in users access circulars
+- **Audience enforcement** - Recipients only see circulars sent to them
+- **Secure storage** - Files stored in encrypted cloud storage
+- **Access logs** - System tracks all circular access
+- **Audit trails** - Complete record of who sent what to whom
+
+<Warning>
+Circulars may contain sensitive information. Verify audience targeting before sending.
+</Warning>
+
+## Troubleshooting
+
+### Low Open Rates
+- Check if recipients have active app accounts
+- Consider email channel for better reach
+- Send at different times of day
+- Use more descriptive titles
+
+### Recipients Not Seeing Circular
+- Verify recipient is in target audience
+- Check circular status is "sent" not "draft"
+- Confirm recipient has correct permissions
+- For teacher targeting, verify they're in recipient list
+
+### PDF Not Displaying
+- Ensure file is valid PDF format
+- Check file size under 25MB
+- Try re-uploading the document
+- Test on different devices/browsers
+
+## Related Features
+
+- [Student Management](/features/students) - Guardian contact information used for delivery
+- [Enrollment Management](/features/enrollment) - Determines which families are "active"
+- [User Management](/admin/users) - Manage staff permissions for communications

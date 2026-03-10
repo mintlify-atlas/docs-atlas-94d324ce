@@ -1,0 +1,443 @@
+---
+title: 'Habeas Data Compliance'
+description: 'Personal data protection under Colombian Law 1581/2012'
+icon: 'shield-halved'
+---
+
+## Overview
+
+**Ley 1581 de 2012** (Habeas Data Law) regulates the protection of personal data in Colombia. Educational institutions process sensitive information about minors, making strict compliance essential.
+
+<Warning>
+  **Legal Requirement**: Processing personal data of students without proper consent and data protection policies violates Colombian law and can result in significant fines from the Superintendencia de Industria y Comercio (SIC).
+</Warning>
+
+## Key Requirements
+
+The law establishes specific obligations for educational institutions:
+
+### 1. Informed Consent
+
+**For minors** (students under 18):
+- Parent or legal guardian must provide explicit consent
+- Consent must be informed, prior, and freely given
+- Purpose of data processing must be clearly stated
+- Cannot be bundled with other consents
+
+**For adults** (staff, parents):
+- Direct consent from the data subject
+- Same standards of clarity and freedom
+
+### 2. Data Processing Principles
+
+- **Legality**: Only process data lawfully
+- **Purpose**: Collect data for explicit, legitimate purposes
+- **Freedom**: Consent must be voluntary
+- **Veracity**: Data must be accurate and updated
+- **Transparency**: Inform data subjects how their data is used
+- **Security**: Implement technical and administrative safeguards
+- **Confidentiality**: Restrict access to authorized personnel
+
+### 3. Data Subject Rights
+
+- **Access**: Request a copy of their data
+- **Rectification**: Correct inaccurate data
+- **Deletion**: Request removal of data (with limitations)
+- **Revocation**: Withdraw consent (if legally permissible)
+- **Complaint**: File complaints with SIC
+
+## How Athena Implements Habeas Data
+
+### Consent Capture
+
+Athena captures and stores Habeas Data consent as part of the enrollment process.
+
+#### Database Schema
+
+Consent documents are stored in `enrollment_documents`:
+
+```sql
+CREATE TABLE enrollment_documents (
+    id                       UUID PRIMARY KEY,
+    school_id                UUID NOT NULL,
+    enrollment_id            UUID NOT NULL,
+    document_type            TEXT NOT NULL,  -- 'habeas_data', 'tratamiento_datos'
+    status                   TEXT NOT NULL,
+    r2_object_key            TEXT,
+    file_name                TEXT,
+    uploaded_at              TIMESTAMPTZ,
+    validated_at             TIMESTAMPTZ,
+    validated_by             UUID,
+    accepted_by_guardian_id  UUID,  -- Links to guardians table
+    document_version         TEXT,
+    metadata                 JSONB
+);
+```
+
+#### Consent Metadata Structure
+
+```json
+{
+  "consent_type": "habeas_data",
+  "acceptance_timestamp": "2026-01-15T09:30:00Z",
+  "ip_address": "190.85.123.45",
+  "user_agent": "Mozilla/5.0...",
+  "guardian_name": "María González",
+  "guardian_document": "52123456",
+  "guardian_relationship": "mother",
+  "policy_version": "2026-v1",
+  "acceptance_method": "digital_checkbox",
+  "consent_text_hash": "sha256:abc123..."  -- Verifies unchanged consent text
+}
+```
+
+<Note>
+  **Timestamp and IP**: Recording the exact time and IP address of consent provides legal evidence that consent was given. This is especially important if consent is ever challenged.
+</Note>
+
+### Consent Workflow
+
+1. **Guardian Access**: During enrollment, guardian accesses the student's profile
+2. **Policy Presentation**: Athena displays the institution's data treatment policy
+3. **Digital Acceptance**: Guardian checks the consent box
+4. **Metadata Capture**: System records timestamp, IP, user agent
+5. **Document Generation**: Signed consent form is generated and stored in R2
+6. **Database Record**: Consent entry created in `enrollment_documents`
+
+### Customizable Consent Text
+
+Each institution configures their own Habeas Data text in **Configuración** → **Seguridad y Habeas Data**:
+
+```sql
+CREATE TABLE school_settings (
+    school_id         UUID PRIMARY KEY,
+    habeas_data_text  TEXT,
+    -- other fields...
+);
+```
+
+**Example consent text:**
+
+> De conformidad con la Ley 1581 de 2012 (Protección de datos personales), el acudiente autoriza a la Institución Educativa [NOMBRE] para el tratamiento de los datos personales del menor de edad, con fines exclusivamente académicos, administrativos y de contacto oficial.
+>
+> Los datos serán utilizados para:
+> - Gestión académica y evaluación del estudiante
+> - Comunicaciones institucionales
+> - Cumplimiento de obligaciones legales (SIMAT, reportes oficiales)
+> - Atención de emergencias médicas
+>
+> Se garantiza el derecho de acceso, rectificación y supresión de la información según los términos establecidos en la ley.
+
+<Warning>
+  **Legal Review Required**: Each institution should have their Habeas Data policy and consent text reviewed by legal counsel familiar with Colombian data protection law.
+</Warning>
+
+## Audit Trail
+
+Ley 1581 requires demonstrable accountability. Athena implements audit logging for compliance.
+
+### Audit Log Schema
+
+```sql
+CREATE TABLE audit_log (
+    id          BIGSERIAL PRIMARY KEY,
+    tenant_id   UUID NOT NULL,
+    user_id     UUID NOT NULL,
+    action      TEXT NOT NULL,  -- 'READ', 'UPDATE', 'DELETE'
+    table_name  TEXT NOT NULL,
+    record_id   UUID,
+    ip_address  INET,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### What Gets Audited
+
+**High-priority actions:**
+- Student personal data access (READ)
+- Student data modification (UPDATE)
+- Guardian information changes (UPDATE)
+- Enrollment document uploads (CREATE)
+- Data exports (SIMAT, reports) (READ)
+- User access to sensitive pages (READ)
+
+**Example audit entries:**
+
+```json
+[
+  {
+    "id": 12345,
+    "tenant_id": "school-uuid",
+    "user_id": "admin-uuid",
+    "action": "READ",
+    "table_name": "students",
+    "record_id": "student-uuid",
+    "ip_address": "190.85.123.45",
+    "created_at": "2026-03-10T14:22:00Z"
+  },
+  {
+    "id": 12346,
+    "tenant_id": "school-uuid",
+    "user_id": "secretary-uuid",
+    "action": "UPDATE",
+    "table_name": "students",
+    "record_id": "student-uuid",
+    "ip_address": "190.85.123.46",
+    "created_at": "2026-03-10T14:25:00Z"
+  }
+]
+```
+
+<Note>
+  **MVP Status**: The audit_log table is defined and critical operations are logged. Full automated audit middleware for all data access is planned for Phase 5. Institutions should implement manual logging procedures for compliance until then.
+</Note>
+
+## Data Subject Rights Implementation
+
+### Right to Access
+
+**How Athena Supports This:**
+- Guardians can view their student's complete profile
+- Students (with account) can view their own data
+- Export feature provides machine-readable data copy
+
+**Process:**
+1. Guardian requests data copy via email to institution
+2. Secretary generates export from student profile
+3. PDF report sent to guardian within legal timeframe (10 business days)
+
+### Right to Rectification
+
+**How Athena Supports This:**
+- Guardians can request corrections through the platform
+- Secretary role has permissions to update student data
+- Changes are logged in audit trail
+
+**Process:**
+1. Guardian identifies incorrect data
+2. Submits correction request (in-app or email)
+3. Secretary validates and updates record
+4. System logs the modification
+5. Guardian receives confirmation
+
+### Right to Deletion
+
+**How Athena Supports This:**
+- Soft deletion via `is_active` flag
+- Hard deletion available (with restrictions)
+- Audit log preserved even after deletion
+
+**Legal Limitations:**
+- Cannot delete data required for legal compliance (SIMAT, tax records)
+- Academic records must be retained per MEN regulations
+- Deletion possible after student graduation + retention period
+
+<Warning>
+  **Retention Requirements**: Ministry of Education regulations require retention of academic records for specific periods. Consult current regulations before permanently deleting student data.
+</Warning>
+
+### Right to Revocation
+
+**How Athena Supports This:**
+- Guardians can revoke consent through formal request
+- System flags enrollment for consent review
+- Institution evaluates legal basis for continued processing
+
+**Legal Consideration:**
+- Revocation may conflict with legal obligations (e.g., SIMAT reporting)
+- Institution may need to process data under legal basis other than consent
+- Document alternative legal basis clearly
+
+## Security Measures
+
+### Access Control
+
+Role-based permissions restrict data access:
+
+```python
+# From permissions.py
+ROLE_PERMISSIONS = {
+    Role.RECTOR: {"read:all", "write:all", "delete:all"},
+    Role.COORDINATOR: {"read:students", "write:convivencia"},
+    Role.SECRETARY: {"write:enrollment", "read:students"},
+    Role.TEACHER: {"read:own_students", "write:grades"},
+    Role.STUDENT: {"read:own_data"},
+    Role.GUARDIAN: {"read:own_child"},
+}
+```
+
+### Data Encryption
+
+**Current Implementation:**
+- TLS 1.3 for data in transit (HTTPS)
+- PostgreSQL server-side encryption at rest (Supabase default)
+- Cloudflare R2 encryption for uploaded documents
+
+**Planned Enhancements (Phase 5):**
+- Field-level encryption for document numbers using `pg_crypto`
+- Encrypted backups with separate key management
+
+### Multi-tenant Isolation
+
+Strict tenant separation prevents cross-school data leaks:
+
+```python
+# Every query automatically filtered by tenant
+result = await db.execute(
+    select(Student).where(Student.tenant_id == tenant.id)
+)
+```
+
+**Security Tests:**
+
+Athena includes tenant isolation tests:
+
+```python
+# test_tenant_isolation.py
+def test_cannot_access_other_tenant_students():
+    """User from School A cannot read students from School B"""
+    response = client_school_a.get("/api/students/{school_b_student_id}")
+    assert response.status_code == 403
+```
+
+## Compliance Dashboard
+
+### Monitoring Consent Status
+
+The enrollment dashboard shows Habeas Data compliance:
+
+- **Green badge**: Consent captured and validated
+- **Yellow badge**: Consent pending upload
+- **Red badge**: No consent on file
+
+**Filter enrollments missing consent:**
+```
+Status Filter: Pendiente Documentos
+Document Type: Habeas Data = PENDIENTE
+```
+
+### Institutional Compliance Report
+
+Generate compliance reports showing:
+- Total enrollments with valid consent
+- Pending consent count
+- Consent capture rate by period
+- Audit log access summary
+
+## Best Practices
+
+<Card title="Annual Policy Review" icon="calendar-check">
+  Review and update your Habeas Data policy annually:
+  - Verify legal compliance with current law
+  - Update consent text version number
+  - Re-obtain consent if policy changes materially
+  - Train staff on new procedures
+</Card>
+
+<Card title="Document Everything" icon="file-contract">
+  Maintain records of:
+  - Signed consent forms (digital and physical)
+  - Policy version history
+  - Staff training on data protection
+  - Data breach response plans and incidents
+  - SIC communications if any
+</Card>
+
+<Card title="Minimize Data Collection" icon="minimize">
+  Only collect data necessary for:
+  - Academic management
+  - Legal compliance
+  - Health and safety
+  
+  Avoid collecting:
+  - Excessive personal details
+  - Sensitive data without clear justification
+  - Data "just in case" it's needed later
+</Card>
+
+<Card title="Secure Third-party Sharing" icon="handshake">
+  If sharing data with third parties (e.g., transport, cafeteria):
+  - Obtain explicit consent for sharing
+  - Execute data processing agreements
+  - Verify their security measures
+  - Limit data to what's strictly necessary
+</Card>
+
+## Staff Training
+
+All staff with data access should receive training on:
+
+1. **Legal Framework**
+   - Ley 1581/2012 key provisions
+   - Institutional responsibilities
+   - Penalties for non-compliance
+
+2. **Operational Procedures**
+   - How to capture consent in Athena
+   - Data access protocols
+   - Incident reporting
+
+3. **Security Practices**
+   - Strong password requirements
+   - Prohibition on sharing credentials
+   - Secure document handling
+   - Physical security of devices
+
+<Note>
+  **Training Records**: Document staff training on data protection. This demonstrates due diligence in case of regulatory audit.
+</Note>
+
+## Incident Response
+
+### Data Breach Protocol
+
+If personal data is compromised:
+
+1. **Immediate Actions**
+   - Contain the breach (revoke access, secure systems)
+   - Document the incident (what, when, how many records)
+   - Notify institution's legal counsel
+
+2. **Regulatory Notification**
+   - Evaluate if breach meets SIC reporting threshold
+   - Prepare breach notification within legal timeframe
+   - Notify SIC if required (usually within 15 days)
+
+3. **Data Subject Notification**
+   - Notify affected guardians/students if high risk
+   - Explain nature of breach and data involved
+   - Describe remediation steps taken
+
+4. **Remediation**
+   - Address security vulnerabilities
+   - Implement additional safeguards
+   - Review and update security policies
+   - Train staff on lessons learned
+
+<Warning>
+  **Do Not Delay**: Failure to report a significant data breach to SIC can result in fines up to 2,000 times the monthly minimum wage. Consult legal counsel immediately if a breach occurs.
+</Warning>
+
+## Regulatory References
+
+- **Ley 1581 de 2012**: Personal data protection law
+- **Decreto 1377 de 2013**: Regulations for Ley 1581
+- **Ley 1266 de 2008**: Habeas Data (financial data)
+- **SIC Circular Externa 002 de 2015**: Data processing guidelines
+
+### Useful Resources
+
+- SIC Official Site: https://www.sic.gov.co/
+- SIC Data Protection Guidelines: [Search "Protección de Datos Personales" on SIC]
+- Colombian Data Protection Authority (SIC) complaint system
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SIMAT Integration" icon="file-export" href="/compliance/simat">
+    Ensure consent before SIMAT data export
+  </Card>
+  <Card title="Enrollment Process" icon="users" href="/essentials/enrollments">
+    Learn complete enrollment workflow
+  </Card>
+</CardGroup>

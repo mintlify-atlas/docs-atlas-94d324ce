@@ -1,0 +1,218 @@
+---
+title: "Get Enrollment"
+api: "GET /api/enrollments/{enrollment_id}"
+description: "Retrieve detailed information about a specific enrollment"
+---
+
+## Path Parameters
+
+<ParamField path="enrollment_id" type="uuid" required>
+  Unique identifier of the enrollment
+</ParamField>
+
+## Response
+
+Returns the complete enrollment object with all associated documents.
+
+<ResponseField name="id" type="uuid">
+  Unique enrollment identifier
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  School identifier
+</ResponseField>
+
+<ResponseField name="student_id" type="uuid">
+  Student identifier
+</ResponseField>
+
+<ResponseField name="school_year_id" type="uuid">
+  School year identifier
+</ResponseField>
+
+<ResponseField name="grade_level" type="string">
+  Grade level (e.g., "1°", "2°", "10°", "11°")
+</ResponseField>
+
+<ResponseField name="group_code" type="string" nullable>
+  Group or class code (e.g., "A", "B", "1A")
+</ResponseField>
+
+<ResponseField name="shift" type="string" nullable>
+  School shift (e.g., "morning", "afternoon")
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current enrollment status
+</ResponseField>
+
+<ResponseField name="status_history" type="array">
+  Array of status changes with timestamp and user
+  
+  <Expandable title="Status History Item">
+    <ResponseField name="status" type="string">
+      The status at this point in time
+    </ResponseField>
+    
+    <ResponseField name="changed_at" type="datetime">
+      When the status was changed
+    </ResponseField>
+    
+    <ResponseField name="changed_by" type="uuid">
+      User ID who made the change
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="simat_status" type="object">
+  SIMAT (Colombian education system) status data
+</ResponseField>
+
+<ResponseField name="extra_data" type="object">
+  Additional custom data for the enrollment
+</ResponseField>
+
+<ResponseField name="student_name" type="string">
+  Full name of the student
+</ResponseField>
+
+<ResponseField name="school_year_name" type="string">
+  Name of the school year
+</ResponseField>
+
+<ResponseField name="documents" type="array">
+  Array of enrollment document objects
+  
+  <Expandable title="Document Object">
+    <ResponseField name="id" type="uuid">
+      Document identifier
+    </ResponseField>
+    
+    <ResponseField name="school_id" type="uuid">
+      School identifier
+    </ResponseField>
+    
+    <ResponseField name="enrollment_id" type="uuid">
+      Enrollment identifier
+    </ResponseField>
+    
+    <ResponseField name="document_type" type="string">
+      Type of document (e.g., "birth_certificate", "id_card")
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Document status (e.g., "uploaded", "validated")
+    </ResponseField>
+    
+    <ResponseField name="r2_object_key" type="string">
+      Storage key for the document file
+    </ResponseField>
+    
+    <ResponseField name="file_name" type="string">
+      Original filename of the uploaded document
+    </ResponseField>
+    
+    <ResponseField name="uploaded_at" type="datetime">
+      When the document was uploaded
+    </ResponseField>
+    
+    <ResponseField name="validated_at" type="datetime" nullable>
+      When the document was validated (if applicable)
+    </ResponseField>
+    
+    <ResponseField name="validated_by" type="uuid" nullable>
+      User ID who validated the document
+    </ResponseField>
+    
+    <ResponseField name="accepted_by_guardian_id" type="uuid" nullable>
+      Guardian ID who accepted the document
+    </ResponseField>
+    
+    <ResponseField name="document_version" type="string" nullable>
+      Version of the document
+    </ResponseField>
+    
+    <ResponseField name="metadata_json" type="object">
+      Additional metadata for the document
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Timestamp when the enrollment was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Timestamp when the enrollment was last updated
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "student_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "school_year_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "grade_level": "10°",
+  "group_code": "A",
+  "shift": "morning",
+  "status": "active",
+  "status_history": [
+    {
+      "status": "pending_documents",
+      "changed_at": "2024-01-15T10:30:00Z",
+      "changed_by": "d4e5f6a7-b8c9-0123-def1-234567890123"
+    },
+    {
+      "status": "active",
+      "changed_at": "2024-01-20T14:25:00Z",
+      "changed_by": "d4e5f6a7-b8c9-0123-def1-234567890123"
+    }
+  ],
+  "simat_status": {},
+  "extra_data": {
+    "special_needs": false,
+    "transportation": "school_bus"
+  },
+  "student_name": "Juan Pérez García",
+  "school_year_name": "2024",
+  "documents": [
+    {
+      "id": "e5f6a7b8-c9d0-1234-efab-567890123456",
+      "school_id": "550e8400-e29b-41d4-a716-446655440000",
+      "enrollment_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "document_type": "birth_certificate",
+      "status": "uploaded",
+      "r2_object_key": "550e8400-e29b-41d4-a716-446655440000/students/b2c3d4e5-f6a7-8901-bcde-f12345678901/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/birth_certificate.pdf",
+      "file_name": "birth_certificate.pdf",
+      "uploaded_at": "2024-01-16T09:15:00Z",
+      "validated_at": null,
+      "validated_by": null,
+      "accepted_by_guardian_id": null,
+      "document_version": "1",
+      "metadata_json": {}
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-20T14:25:00Z"
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Matrícula no encontrada"
+}
+```
+</ResponseExample>
+
+## Permissions Required
+
+- `read:enrollment`
+- `read:all`

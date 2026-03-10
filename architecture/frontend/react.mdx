@@ -1,0 +1,342 @@
+---
+title: "React 19 Architecture"
+description: "React 19 setup, component patterns, and modern practices in Athena ERP"
+---
+
+## Overview
+
+Athena ERP's frontend is built with **React 19**, leveraging modern component patterns, TypeScript strict mode, and performance optimizations. The application uses Vite as the build tool for fast development and optimized production builds.
+
+## Technology Stack
+
+### Core Dependencies
+
+```json
+{
+  "react": "^19.0.0",
+  "react-dom": "^19.0.0",
+  "typescript": "~5.8.2",
+  "vite": "^6.2.0"
+}
+```
+
+### Key Libraries
+
+- **@tanstack/react-query**: Server state management and data fetching
+- **react-hook-form**: Form handling with validation
+- **@hookform/resolvers + zod**: Schema-based form validation
+- **lucide-react**: Icon library
+- **sonner**: Toast notifications
+- **motion**: Animation library
+- **tailwindcss**: Utility-first CSS framework
+
+## Project Structure
+
+```
+athena-front/src/
+├── api/                    # API client configuration
+│   └── client.ts          # Axios instance with interceptors
+├── components/            # Shared components
+│   ├── ui/               # Reusable UI components
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Input.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Select.tsx
+│   │   └── Table.tsx
+│   ├── Layout.tsx        # Main layout wrapper
+│   ├── ProtectedRoute.tsx # Route authorization
+│   └── Can.tsx           # Permission-based rendering
+├── hooks/                # Custom React hooks
+│   ├── useStudents.ts
+│   ├── useSchools.ts
+│   └── useEnrollments.ts
+├── lib/                  # Utility libraries
+│   ├── api.ts           # API service functions
+│   ├── supabase.ts      # Supabase client
+│   └── utils.ts         # Helper functions
+├── modules/             # Feature modules (domain-driven)
+│   ├── academicAreas/
+│   ├── offeredSubjects/
+│   ├── studyPlans/
+│   ├── subjectCatalog/
+│   └── teacherAssignments/
+├── pages/               # Route pages
+│   ├── Dashboard.tsx
+│   ├── Estudiantes.tsx
+│   ├── Academico.tsx
+│   └── ...
+├── store/              # Global state (Zustand)
+│   └── authStore.ts
+├── App.tsx             # Root component with routing
+├── main.tsx            # Application entry point
+└── index.css           # Global styles
+```
+
+## Component Patterns
+
+### React 19 Features
+
+The application uses React 19's modern features:
+
+**Strict Mode** for development safety:
+
+```tsx title="main.tsx"
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" richColors />
+      <App />
+    </QueryClientProvider>
+  </StrictMode>,
+);
+```
+
+### Functional Components with TypeScript
+
+All components use functional components with TypeScript interfaces:
+
+```tsx title="components/ui/Button.tsx"
+import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react';
+import { cn } from '../../lib/utils';
+import { Loader2 } from 'lucide-react';
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+  isLoading?: boolean;
+  leftIcon?: ReactNode;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'primary', size = 'md', isLoading = false, children, disabled, ...props }, ref) => {
+    const baseStyles = "inline-flex items-center justify-center font-bold transition-all rounded-xl outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+    
+    const variants = {
+      primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-600/20 focus:ring-blue-600",
+      secondary: "bg-blue-50 text-blue-700 hover:bg-blue-100 focus:ring-blue-100",
+      outline: "border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-200",
+      ghost: "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-100",
+      danger: "bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-100",
+    };
+
+    const sizes = {
+      sm: "h-9 px-4 text-xs",
+      md: "h-11 px-6 text-sm",
+      lg: "h-14 px-8 text-base",
+      icon: "h-10 w-10 p-2",
+    };
+
+    return (
+      <button
+        ref={ref}
+        disabled={isLoading || disabled}
+        className={cn(baseStyles, variants[variant], sizes[size], className)}
+        {...props}
+      >
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {!isLoading && props.leftIcon && <span className="mr-2">{props.leftIcon}</span>}
+        {children}
+      </button>
+    );
+  }
+);
+Button.displayName = 'Button';
+```
+
+**Key patterns:**
+- `forwardRef` for ref forwarding
+- TypeScript interfaces extending native HTML attributes
+- Compound variant patterns for styling
+- `cn()` utility for conditional class merging (from `tailwind-merge`)
+
+### Custom Hooks Pattern
+
+Data fetching hooks use React Query for server state:
+
+```tsx title="hooks/useStudents.ts"
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
+
+export function useStudents(params: { 
+  page?: number; 
+  page_size?: number; 
+  search?: string; 
+  grade?: string 
+} = {}) {
+  return useQuery({
+    queryKey: ['students', params],
+    queryFn: async () => {
+      const { data } = await apiClient.get<StudentListResponse>('/students', { params });
+      return {
+        ...data,
+        items: (data.items || []).map(normalizeStudent),
+      };
+    },
+  });
+}
+
+export function useCreateStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (student: Omit<Student, 'id' | 'tenant_id' | 'school_id'>) => {
+      const { data } = await apiClient.post<Student>('/students', student);
+      return normalizeStudent(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    },
+  });
+}
+```
+
+**Benefits:**
+- Automatic caching and background refetching
+- Optimistic updates
+- Query invalidation
+- Loading and error states
+
+## Module Architecture
+
+### Feature-Based Organization
+
+Modules follow a domain-driven structure:
+
+```
+modules/academicAreas/
+├── components/
+│   └── AcademicAreasTab.tsx
+├── hooks/
+│   └── useAcademicAreas.ts
+└── services/
+    └── areaRepository.ts
+```
+
+Each module encapsulates:
+- **components/**: Module-specific UI components
+- **hooks/**: Module-specific data fetching hooks
+- **services/**: API repository layer
+
+### Shared Components
+
+UI components in `components/ui/` are framework-agnostic and reusable:
+
+- **Button**: Multi-variant button with loading states
+- **Card**: Container component
+- **Input**: Form input with validation styles
+- **Modal**: Overlay modal component
+- **Select**: Dropdown select component
+- **Table**: Data table component
+
+## TypeScript Configuration
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+```
+
+**Key configurations:**
+- **ES2022 target**: Modern JavaScript features
+- **react-jsx**: React 19's automatic JSX runtime
+- **bundler resolution**: Vite-compatible module resolution
+- **Path aliases**: `@/` maps to project root
+
+## Vite Configuration
+
+```ts title="vite.config.ts"
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, '.', '');
+  return {
+    plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      hmr: process.env.DISABLE_HMR !== 'true',
+    },
+  };
+});
+```
+
+## Best Practices
+
+### Component Design
+
+1. **Single Responsibility**: Each component has one clear purpose
+2. **Composition over Inheritance**: Build complex UIs from simple components
+3. **Props Interfaces**: Always define TypeScript interfaces for props
+4. **ForwardRef**: Use for components that need DOM refs
+
+### Performance Optimization
+
+1. **React Query Caching**: Automatic request deduplication and caching
+2. **Code Splitting**: Dynamic imports for routes (via react-router-dom)
+3. **Memoization**: Use `useMemo` and `useCallback` for expensive computations
+4. **Lazy Loading**: Load components on-demand
+
+### State Management Strategy
+
+- **Server State**: React Query (`@tanstack/react-query`)
+- **Global State**: Zustand (authentication, app-wide settings)
+- **Local State**: React `useState` for component-specific state
+- **Form State**: react-hook-form for complex forms
+
+## Development Workflow
+
+### Running the Dev Server
+
+```bash
+npm run dev
+# Runs on http://localhost:3000
+```
+
+### Building for Production
+
+```bash
+npm run build
+# Outputs to dist/
+```
+
+### Type Checking
+
+```bash
+npm run lint
+# Runs TypeScript compiler without emitting files
+```
+
+## Related Documentation
+
+- [Routing Architecture](/architecture/frontend/routing)
+- [State Management](/architecture/frontend/state-management)
+- [FastAPI Backend](/architecture/backend/fastapi)

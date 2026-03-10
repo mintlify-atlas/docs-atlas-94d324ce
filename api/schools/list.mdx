@@ -1,0 +1,212 @@
+---
+title: "List Schools"
+description: "Retrieve school information and settings"
+---
+
+## Get Current School
+
+<api-endpoint method="GET" path="/schools/me" />
+
+Retrieve information about the current school (tenant) based on the authenticated user's context.
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the school
+</response-field>
+
+<response-field name="name" type="string">
+  Official name of the school
+</response-field>
+
+<response-field name="nit" type="string">
+  Tax identification number (NIT) for the school
+</response-field>
+
+<response-field name="resolution" type="string">
+  Official resolution or authorization number from the education ministry
+</response-field>
+
+<response-field name="is_active" type="boolean">
+  Whether the school is currently active in the system
+</response-field>
+
+<response-field name="pei_summary" type="string">
+  Summary of the school's Institutional Educational Project (PEI)
+</response-field>
+
+<response-field name="settings" type="object">
+  School configuration settings including SIMAT integration, branding, security, and habeas data policies
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  When the school was created in the system
+</response-field>
+
+<response-field name="updated_at" type="datetime">
+  Last update timestamp
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/schools/me" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "name": "Colegio San Francisco de Asís",
+  "nit": "900123456-7",
+  "resolution": "Resolución 12345 de 2020",
+  "is_active": true,
+  "pei_summary": "Formación integral basada en valores franciscanos y excelencia académica",
+  "settings": {
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "pei_summary": "Formación integral basada en valores franciscanos y excelencia académica",
+    "simat_settings": {
+      "enabled": true,
+      "institution_code": "123456"
+    },
+    "branding_settings": {
+      "primary_color": "#0066CC",
+      "logo_r2_object_key": "school-uuid/school/logos/logo.png"
+    },
+    "security_settings": {
+      "require_2fa": false,
+      "session_timeout_minutes": 480
+    },
+    "habeas_data_text": "Autorizo el tratamiento de datos personales conforme a la Ley 1581 de 2012...",
+    "updated_at": "2026-03-01T10:00:00Z"
+  },
+  "created_at": "2025-01-15T08:00:00Z",
+  "updated_at": "2026-03-01T10:00:00Z"
+}
+```
+</response-example>
+
+---
+
+## List All Schools (Admin)
+
+<api-endpoint method="GET" path="/admin/schools" />
+
+Retrieve a list of all schools in the system. Requires super-admin permissions.
+
+### Response
+
+Returns an array of school objects with the same structure as the "Get Current School" endpoint.
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/admin/schools" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "name": "Colegio San Francisco de Asís",
+    "nit": "900123456-7",
+    "resolution": "Resolución 12345 de 2020",
+    "is_active": true,
+    "pei_summary": "Formación integral basada en valores franciscanos",
+    "settings": { /* ... */ },
+    "created_at": "2025-01-15T08:00:00Z",
+    "updated_at": "2026-03-01T10:00:00Z"
+  },
+  {
+    "id": "123abcde-f456-7890-abcd-ef1234567890",
+    "name": "Instituto Técnico Industrial",
+    "nit": "900987654-3",
+    "resolution": "Resolución 67890 de 2019",
+    "is_active": true,
+    "pei_summary": "Educación técnica con énfasis en industria 4.0",
+    "settings": { /* ... */ },
+    "created_at": "2025-02-20T09:00:00Z",
+    "updated_at": "2026-02-28T15:00:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Get School by ID (Admin)
+
+<api-endpoint method="GET" path="/admin/schools/{school_id}" />
+
+Retrieve detailed information about a specific school. Requires super-admin permissions.
+
+### Path Parameters
+
+<param-field path="school_id" type="uuid" required>
+  Unique identifier of the school
+</param-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/admin/schools/987fcdeb-51a2-43d1-b789-123456789abc" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+</request-example>
+
+## School Settings
+
+The `settings` object contains the following configuration options:
+
+### SIMAT Settings
+
+<response-field name="settings.simat_settings" type="object">
+  Integration with Colombian SIMAT (Student Information Management System)
+  - `enabled` (boolean) - Whether SIMAT integration is active
+  - `institution_code` (string) - Official SIMAT institution code
+  - Additional SIMAT configuration parameters
+</response-field>
+
+### Branding Settings
+
+<response-field name="settings.branding_settings" type="object">
+  Visual branding and customization
+  - `primary_color` (string) - Primary brand color (hex format)
+  - `secondary_color` (string) - Secondary brand color
+  - `logo_r2_object_key` (string) - Storage key for school logo
+  - `files` (array) - Additional uploaded media files
+</response-field>
+
+### Security Settings
+
+<response-field name="settings.security_settings" type="object">
+  Security and access control policies
+  - `require_2fa` (boolean) - Require two-factor authentication
+  - `session_timeout_minutes` (integer) - Session timeout duration
+  - `password_policy` (object) - Password requirements
+  - Additional security policies
+</response-field>
+
+### Habeas Data
+
+<response-field name="settings.habeas_data_text" type="string">
+  Official text for personal data protection (Habeas Data) consent, per Colombian Law 1581 of 2012
+</response-field>
+
+## Permissions
+
+- **Current School** (`/schools/me`): Requires any authenticated user
+- **Admin Endpoints** (`/admin/schools/*`): Requires `manage:schools` permission
+
+## Notes
+
+<info>
+**Tenant Context**: Most endpoints in the API operate within the context of a single school (tenant). The `X-School-ID` header or user's school membership determines which school's data is accessed.
+</info>
+
+<tip>
+**Settings Auto-Creation**: School settings are automatically created when a school is created. If settings don't exist for some reason, they will be created on first access.
+</tip>

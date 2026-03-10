@@ -1,0 +1,122 @@
+---
+title: "User Roles Overview"
+description: "Understand the role-based access control system in Athena ERP"
+---
+
+Athena ERP uses a role-based permission system designed specifically for Colombian educational institutions. Each role has carefully defined permissions that align with real-world responsibilities in schools.
+
+## Available Roles
+
+<CardGroup cols={2}>
+  <Card title="Rector" icon="user-tie" href="/roles/rector">
+    Full administrative control over the institution
+  </Card>
+  <Card title="Coordinator" icon="users-gear" href="/roles/coordinator">
+    Student affairs, discipline, and academic oversight
+  </Card>
+  <Card title="Secretary" icon="clipboard" href="/roles/secretary">
+    Enrollment management and administrative communications
+  </Card>
+  <Card title="Teacher" icon="chalkboard-user" href="/roles/teacher">
+    Grades, attendance, and classroom management
+  </Card>
+  <Card title="Student" icon="user-graduate" href="/roles/student">
+    Access to personal academic information
+  </Card>
+</CardGroup>
+
+## How Permissions Work
+
+Permissions in Athena are defined in code and validated on every API request. This ensures:
+
+- **Predictable access control** - Permissions are consistent across all schools
+- **Easy to audit** - All permissions are visible in the codebase
+- **Multi-role support** - Users can have multiple roles (e.g., Rector + Teacher)
+
+### Permission Categories
+
+<Tabs>
+  <Tab title="Read Permissions">
+    Control what data users can view:
+    - `read:all` - Access to all school data (Rector)
+    - `read:students` - Student profiles and records
+    - `read:grades` - Academic performance data
+    - `read:attendance` - Attendance records
+    - `read:own_students` - Only students in assigned classes
+    - `read:own_data` - Personal information only
+  </Tab>
+  <Tab title="Write Permissions">
+    Control what users can create or modify:
+    - `write:all` - Modify any data (Rector)
+    - `write:enrollment` - Process student enrollments
+    - `write:grades` - Enter academic grades
+    - `write:attendance` - Record student attendance
+    - `write:convivencia` - Manage discipline records
+    - `write:communications` - Send messages and circulars
+  </Tab>
+  <Tab title="Special Permissions">
+    Advanced administrative functions:
+    - `manage:users` - Create and modify user accounts
+    - `config:institution` - Change school settings
+    - `export:simat` - Export to SIMAT format
+    - `read:audit_log` - View system audit logs
+    - `delete:all` - Delete records (Rector only)
+  </Tab>
+</Tabs>
+
+## Multi-Role Users
+
+Users can be assigned multiple roles to reflect their actual responsibilities. For example:
+
+- A **Rector** who also teaches can have both `rector` and `teacher` roles
+- A **Coordinator** who handles enrollment can have `coordinator` and `secretary` roles
+
+When a user has multiple roles, they gain the **union** of all permissions from those roles.
+
+<Note>
+  If any of a user's roles grants a permission, they can perform that action.
+</Note>
+
+## Role Assignment
+
+Roles are assigned by users with the `manage:users` permission (Rector or Superadmin). The assignment is stored in the user's JWT token and validated on every request.
+
+<Steps>
+  <Step title="User Creation">
+    When creating a new user, select one or more roles based on their responsibilities.
+  </Step>
+  <Step title="Token Generation">
+    The selected roles are embedded in the user's authentication token.
+  </Step>
+  <Step title="Permission Check">
+    Every API request validates the user's roles against required permissions.
+  </Step>
+  <Step title="Access Decision">
+    Access is granted if any role provides the needed permission.
+  </Step>
+</Steps>
+
+## Security & Compliance
+
+### Tenant Isolation
+
+All permissions are scoped to a single school (tenant). Users can only access data from their assigned institution, even if they have high-level permissions.
+
+### Audit Trail
+
+Actions performed by Rector and Coordinator roles are logged to comply with Colombian data protection regulations (Ley 1581/2012).
+
+<Warning>
+  The audit log tracks who accessed or modified sensitive student data, including document numbers and personal information.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Explore Role Details" icon="magnifying-glass">
+    Click any role card above to see specific permissions and use cases
+  </Card>
+  <Card title="User Management" icon="users" href="/admin/users">
+    Learn how to create and manage users
+  </Card>
+</CardGroup>

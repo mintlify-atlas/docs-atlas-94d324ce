@@ -1,0 +1,175 @@
+---
+title: 'Colombian Compliance Overview'
+description: 'How Athena ERP ensures compliance with Colombian educational regulations'
+icon: 'scale-balanced'
+---
+
+## Introduction
+
+Athena ERP is built from the ground up to meet Colombian regulatory requirements for educational institutions. This section covers the key compliance areas and how Athena implements them.
+
+<Warning>
+  **Legal Responsibility**: While Athena provides tools to facilitate compliance, each institution remains legally responsible for ensuring their processes meet current regulatory requirements.
+</Warning>
+
+## Key Regulatory Areas
+
+### SIMAT Integration
+
+The **Sistema Integrado de Matrícula** (SIMAT) is Colombia's national student enrollment system managed by the Ministry of Education.
+
+**Athena Implementation:**
+- CSV export with configurable encoding (Latin-1 / UTF-8)
+- Field mapping aligned with SIMAT data structure
+- Sync status tracking per enrollment
+- Bulk upload validation
+
+[Learn more about SIMAT →](/compliance/simat)
+
+### Habeas Data (Ley 1581/2012)
+
+Personal data protection law requiring explicit consent for data processing, especially for minors.
+
+**Athena Implementation:**
+- Digital consent capture with timestamp and IP
+- Configurable consent text per institution
+- Audit log for all data access and modifications
+- Data treatment policies management
+
+[Learn more about Habeas Data →](/compliance/habeas-data)
+
+### Decree 1290/2009
+
+Regulates academic evaluation and promotion in basic and secondary education.
+
+**Athena Implementation:**
+- Configurable grading scale (1.0-5.0)
+- Academic periods management
+- Automatic average calculation
+- Performance level tracking
+- Report card generation
+
+[Learn more about Decree 1290 →](/compliance/decree-1290)
+
+## Data Residency
+
+<Note>
+  **Development vs Production**: During MVP and pilot phases, Athena uses Supabase (US-East) and Railway hosting. For production with real student data, migration to **GCP southamerica-east1** (São Paulo) is planned to ensure compliance with Colombian data residency requirements.
+</Note>
+
+### Current Architecture
+
+| Component | MVP Hosting | Production Plan |
+|-----------|-------------|------------------|
+| Database | Supabase PostgreSQL (US) | GCP Cloud SQL (São Paulo) |
+| API | Railway | GCP Cloud Run (São Paulo) |
+| Files | Cloudflare R2 | Cloudflare R2 |
+| Auth | Supabase Auth | Supabase Auth (or GCP) |
+
+## Multi-tenant Isolation
+
+Athena implements strict tenant isolation to ensure data security across multiple schools:
+
+- Every table includes `school_id` (tenant_id)
+- Middleware automatically filters all queries by tenant
+- Composite indexes on `(school_id, id)` for optimal performance
+- Integration tests verify tenant isolation
+
+```python
+# Automatic tenant injection in every request
+async def get_current_tenant(
+    token: str = Depends(get_jwt_token),
+    db: AsyncSession = Depends(get_db),
+) -> School:
+    user = await validate_supabase_jwt(token)
+    school = await db.get(School, user.school_id)
+    if not school:
+        raise HTTPException(403, "Tenant no encontrado")
+    return school
+```
+
+## Audit Trail
+
+### Audit Log Table
+
+All data modifications are tracked for Habeas Data compliance:
+
+```sql
+CREATE TABLE audit_log (
+    id          BIGSERIAL PRIMARY KEY,
+    tenant_id   UUID NOT NULL,
+    user_id     UUID NOT NULL,
+    action      TEXT NOT NULL,  -- 'READ', 'UPDATE', 'DELETE'
+    table_name  TEXT NOT NULL,
+    record_id   UUID,
+    ip_address  INET,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+```
+
+<Warning>
+  **MVP Status**: The audit_log table structure is defined but automated audit middleware is planned for Phase 5. Manual auditing is currently implemented for critical operations.
+</Warning>
+
+## Security Considerations
+
+### Authentication
+- Supabase Auth with JWT tokens
+- Role-based access control (RBAC) in backend
+- Session management with refresh tokens
+
+### Sensitive Data
+- Student document numbers are unique per tenant
+- Personal data fields are access-controlled by role
+- File uploads stored in R2 with signed URLs
+- Habeas Data consent required before data processing
+
+### Pending Security Enhancements
+
+<Note>
+  These enhancements are scheduled for Phase 5 (Hardening):
+  - Field-level encryption for document numbers using pg_crypto
+  - Rate limiting on authentication endpoints
+  - Automated audit middleware for all POST/PATCH/DELETE operations
+  - End-to-end testing with Playwright
+</Note>
+
+## Regulatory Checklist
+
+Use this checklist when onboarding a new school:
+
+- [ ] Configure institutional Habeas Data text in Settings
+- [ ] Set up SIMAT field mappings for the region
+- [ ] Define academic periods according to school calendar
+- [ ] Configure grading scale (verify Decree 1290 compliance)
+- [ ] Upload institutional resolution and NIT
+- [ ] Train staff on data protection policies
+- [ ] Review and approve default consent forms
+- [ ] Test SIMAT export before first official sync
+
+## Support and Updates
+
+Regulatory requirements change over time. Athena's compliance features are updated to reflect:
+
+- Ministry of Education bulletins and circulars
+- SIMAT platform changes
+- Regional educational authority requirements
+- Legal updates to data protection laws
+
+<Warning>
+  Always verify that your Athena version includes the latest compliance updates. Contact support if you need assistance interpreting new regulations.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="SIMAT Export" icon="file-export" href="/compliance/simat">
+    Configure and manage SIMAT synchronization
+  </Card>
+  <Card title="Habeas Data" icon="shield-halved" href="/compliance/habeas-data">
+    Manage consent and data protection
+  </Card>
+  <Card title="Decree 1290" icon="graduation-cap" href="/compliance/decree-1290">
+    Academic evaluation standards
+  </Card>
+</CardGroup>

@@ -1,0 +1,464 @@
+---
+title: "Discipline Cases"
+description: "Manage discipline cases including incidents, violations, and resolutions"
+---
+
+## List Discipline Cases
+
+<api-endpoint method="GET" path="/discipline/cases" />
+
+Retrieve all discipline cases for the current school with optional filtering.
+
+### Query Parameters
+
+<param-field path="phase" type="string" optional>
+  Filter by case phase (e.g., "incident", "investigation", "resolution")
+</param-field>
+
+<param-field path="severity" type="string" optional>
+  Filter by severity level (e.g., "low", "medium", "high", "critical")
+</param-field>
+
+<param-field path="search" type="string" optional>
+  Search term to filter by description or location
+</param-field>
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the discipline case
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  ID of the school this case belongs to
+</response-field>
+
+<response-field name="reported_by" type="uuid">
+  User ID of the person who reported the incident
+</response-field>
+
+<response-field name="incident_date" type="date">
+  Date when the incident occurred
+</response-field>
+
+<response-field name="location" type="string">
+  Physical location where the incident took place
+</response-field>
+
+<response-field name="description" type="string">
+  Detailed description of the incident
+</response-field>
+
+<response-field name="category" type="string">
+  Category of the incident (e.g., "bullying", "violence", "disrespect")
+</response-field>
+
+<response-field name="severity" type="string">
+  Severity level of the incident
+</response-field>
+
+<response-field name="phase" type="string">
+  Current phase of the case (incident, investigation, resolution, closed)
+</response-field>
+
+<response-field name="resolution_type" type="string">
+  Type of resolution applied (if resolved)
+</response-field>
+
+<response-field name="resolution_notes" type="string">
+  Notes about the resolution
+</response-field>
+
+<response-field name="escalated_at" type="datetime">
+  Timestamp when the case was escalated
+</response-field>
+
+<response-field name="closed_at" type="datetime">
+  Timestamp when the case was closed
+</response-field>
+
+<response-field name="participants" type="array">
+  List of participants involved in the case (students, staff, guardians)
+</response-field>
+
+<response-field name="events" type="array">
+  Timeline of events related to the case
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  Timestamp when the case was created
+</response-field>
+
+<response-field name="updated_at" type="datetime">
+  Timestamp of the last update
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/discipline/cases?phase=investigation&severity=high" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "reported_by": "456e7890-a12b-34c5-d678-901234567def",
+    "incident_date": "2026-03-08",
+    "location": "Patio de recreo",
+    "description": "Altercado físico entre dos estudiantes durante el descanso",
+    "category": "violence",
+    "severity": "high",
+    "phase": "investigation",
+    "resolution_type": null,
+    "resolution_notes": null,
+    "escalated_at": null,
+    "closed_at": null,
+    "participants": [
+      {
+        "id": "789abc12-def3-4567-8901-234567890abc",
+        "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+        "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+        "student_id": "111abc22-def3-4567-8901-234567890def",
+        "user_id": null,
+        "guardian_id": null,
+        "role_in_case": "involved",
+        "label": "Juan Pérez",
+        "created_at": "2026-03-09T10:30:00Z"
+      }
+    ],
+    "events": [
+      {
+        "id": "222bcd33-eff4-5678-9012-345678901efg",
+        "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+        "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+        "event_type": "report",
+        "title": "Reporte inicial",
+        "body": "Se reporta incidente durante el descanso",
+        "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+        "event_date": "2026-03-09T10:15:00Z",
+        "created_at": "2026-03-09T10:30:00Z"
+      }
+    ],
+    "created_at": "2026-03-09T10:30:00Z",
+    "updated_at": "2026-03-09T10:30:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Create Discipline Case
+
+<api-endpoint method="POST" path="/discipline/cases" />
+
+Create a new discipline case with optional participants and initial event.
+
+### Request Body
+
+<param-field path="incident_date" type="date" required>
+  Date when the incident occurred
+</param-field>
+
+<param-field path="location" type="string" optional>
+  Physical location of the incident
+</param-field>
+
+<param-field path="description" type="string" required>
+  Detailed description of the incident
+</param-field>
+
+<param-field path="category" type="string" required>
+  Category of the incident
+</param-field>
+
+<param-field path="severity" type="string" required>
+  Severity level (low, medium, high, critical)
+</param-field>
+
+<param-field path="phase" type="string" default="incident">
+  Initial phase of the case
+</param-field>
+
+<param-field path="resolution_type" type="string" optional>
+  Type of resolution (if applicable)
+</param-field>
+
+<param-field path="resolution_notes" type="string" optional>
+  Resolution notes
+</param-field>
+
+<param-field path="participants" type="array" optional>
+  Array of participants (students, staff, guardians) involved in the case
+</param-field>
+
+<param-field path="initial_event" type="object" optional>
+  Initial event to add to the case timeline
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incident_date": "2026-03-10",
+    "location": "Salón 301",
+    "description": "Comportamiento disruptivo durante clase de matemáticas",
+    "category": "disruption",
+    "severity": "medium",
+    "phase": "incident",
+    "participants": [
+      {
+        "student_id": "111abc22-def3-4567-8901-234567890def",
+        "role_in_case": "involved"
+      }
+    ],
+    "initial_event": {
+      "event_type": "report",
+      "title": "Reporte docente",
+      "body": "Estudiante interrumpió la clase repetidamente",
+      "event_date": "2026-03-10T14:30:00Z"
+    }
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "333cde44-fgg5-6789-0123-456789012fgh",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "reported_by": "456e7890-a12b-34c5-d678-901234567def",
+  "incident_date": "2026-03-10",
+  "location": "Salón 301",
+  "description": "Comportamiento disruptivo durante clase de matemáticas",
+  "category": "disruption",
+  "severity": "medium",
+  "phase": "incident",
+  "resolution_type": null,
+  "resolution_notes": null,
+  "escalated_at": null,
+  "closed_at": null,
+  "participants": [
+    {
+      "id": "444def55-ghh6-7890-1234-567890123ghi",
+      "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+      "discipline_case_id": "333cde44-fgg5-6789-0123-456789012fgh",
+      "student_id": "111abc22-def3-4567-8901-234567890def",
+      "user_id": null,
+      "guardian_id": null,
+      "role_in_case": "involved",
+      "label": null,
+      "created_at": "2026-03-10T14:35:00Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "555efg66-hii7-8901-2345-678901234hij",
+      "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+      "discipline_case_id": "333cde44-fgg5-6789-0123-456789012fgh",
+      "event_type": "report",
+      "title": "Reporte docente",
+      "body": "Estudiante interrumpió la clase repetidamente",
+      "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+      "event_date": "2026-03-10T14:30:00Z",
+      "created_at": "2026-03-10T14:35:00Z"
+    }
+  ],
+  "created_at": "2026-03-10T14:35:00Z",
+  "updated_at": "2026-03-10T14:35:00Z"
+}
+```
+</response-example>
+
+---
+
+## Get Discipline Case
+
+<api-endpoint method="GET" path="/discipline/cases/{case_id}" />
+
+Retrieve detailed information about a specific discipline case.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+---
+
+## Update Discipline Case
+
+<api-endpoint method="PATCH" path="/discipline/cases/{case_id}" />
+
+Update an existing discipline case. Only provided fields will be updated.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+### Request Body
+
+All fields are optional. Only include fields you want to update.
+
+<param-field path="incident_date" type="date" optional>
+  Date when the incident occurred
+</param-field>
+
+<param-field path="location" type="string" optional>
+  Physical location of the incident
+</param-field>
+
+<param-field path="description" type="string" optional>
+  Description of the incident
+</param-field>
+
+<param-field path="category" type="string" optional>
+  Category of the incident
+</param-field>
+
+<param-field path="severity" type="string" optional>
+  Severity level
+</param-field>
+
+<param-field path="phase" type="string" optional>
+  Current phase (incident, investigation, resolution, closed)
+</param-field>
+
+<param-field path="resolution_type" type="string" optional>
+  Type of resolution
+</param-field>
+
+<param-field path="resolution_notes" type="string" optional>
+  Resolution notes
+</param-field>
+
+<param-field path="escalated_at" type="datetime" optional>
+  Escalation timestamp
+</param-field>
+
+<param-field path="closed_at" type="datetime" optional>
+  Case closure timestamp
+</param-field>
+
+<request-example>
+```bash
+curl -X PATCH "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "resolution",
+    "resolution_type": "warning",
+    "resolution_notes": "Se aplicó amonestación verbal y se notificó a los padres"
+  }'
+```
+</request-example>
+
+---
+
+## Delete Discipline Case
+
+<api-endpoint method="DELETE" path="/discipline/cases/{case_id}" />
+
+Permanently delete a discipline case and all associated data.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+<request-example>
+```bash
+curl -X DELETE "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+---
+
+## Add Participant
+
+<api-endpoint method="POST" path="/discipline/cases/{case_id}/participants" />
+
+Add a participant (student, staff member, or guardian) to an existing discipline case.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+### Request Body
+
+<param-field path="student_id" type="uuid" optional>
+  Student ID (provide one of student_id, user_id, or guardian_id)
+</param-field>
+
+<param-field path="user_id" type="uuid" optional>
+  Staff user ID
+</param-field>
+
+<param-field path="guardian_id" type="uuid" optional>
+  Guardian ID
+</param-field>
+
+<param-field path="role_in_case" type="string" required>
+  Role in the case (e.g., "involved", "witness", "reporter", "mediator")
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000/participants" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "222bcd33-eff4-5678-9012-345678901efg",
+    "role_in_case": "witness"
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "666fgh77-ijj8-9012-3456-789012345ijk",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+  "student_id": "222bcd33-eff4-5678-9012-345678901efg",
+  "user_id": null,
+  "guardian_id": null,
+  "role_in_case": "witness",
+  "label": null,
+  "created_at": "2026-03-10T15:00:00Z"
+}
+```
+</response-example>
+
+## Permissions
+
+All discipline case endpoints require one of the following permissions:
+- `write:convivencia` - For creating and modifying cases
+- `write:due_process` - For managing due process procedures
+- `read:all` - For viewing cases (read-only)
+- `write:all` - Full access to all operations

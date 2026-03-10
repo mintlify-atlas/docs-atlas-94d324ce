@@ -1,0 +1,384 @@
+---
+title: User Management
+description: Create and manage users across schools in Athena ERP
+icon: users
+---
+
+## Overview
+
+User management allows superadmins to create users, assign them to schools, and configure their roles and permissions. Athena ERP uses a multi-membership model where users can belong to multiple schools with different roles in each.
+
+<Info>
+  **Permission required**: `manage:schools` - Only superadmins can create and manage users across all schools.
+</Info>
+
+## User Architecture
+
+Athena ERP separates user identity from school membership:
+
+- **Users**: Global identity managed by Supabase Auth
+- **School Memberships**: Links between users and schools with assigned roles
+- **Roles**: Define permissions within a specific school context
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/user.py`
+
+### Available Roles
+
+| Role | Code | Description |
+|------|------|-------------|
+| Rector | `rector` | School director with full administrative access |
+| Coordinator | `coordinator` | Manages discipline and academic coordination |
+| Secretary | `secretary` | Handles enrollment and administrative tasks |
+| Teacher | `teacher` | Manages grades, attendance, and activities |
+| Student | `student` | Student access to own data and grades |
+| Guardian | `acudiente` | Parent/guardian access to child's information |
+| Superadmin | `superadmin` | Platform administrator (not assignable via memberships) |
+
+Source: `/home/daytona/workspace/source/athena-api/app/auth/permissions.py:6`
+
+<Note>
+  The **superadmin** role is platform-level and cannot be assigned through school memberships. All other roles are school-specific.
+</Note>
+
+## Viewing Users
+
+The admin panel displays all users in the system with their school memberships.
+
+<Steps>
+  <Step title="Access User List">
+    Navigate to the users section in the admin panel.
+    
+    ```python
+    GET /admin/users
+    ```
+  </Step>
+  
+  <Step title="Review User Information">
+    Each user record shows:
+    - Email address
+    - Full name
+    - Primary school ID
+    - Assigned roles in primary school
+    - All school memberships
+    - Active/inactive status
+    - Creation and update timestamps
+  </Step>
+  
+  <Step title="View Multiple Memberships">
+    Users with memberships in multiple schools will display all associations. The first membership is treated as primary for display purposes.
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/admin.py:173`
+
+## Creating Users
+
+User creation involves both authentication (Supabase) and application-level setup.
+
+<Steps>
+  <Step title="Verify School Exists">
+    Confirm the target school exists before creating the user. The system validates the school ID during creation.
+  </Step>
+  
+  <Step title="Prepare User Information">
+    Gather required information:
+    - **Email**: User's email address (unique, used for login)
+    - **Password**: Minimum 8 characters
+    - **Full Name**: User's complete name
+    - **School ID**: UUID of the school to assign
+    - **Roles**: Array of role codes (minimum 1 role)
+    
+    ```python
+    POST /admin/users
+    {
+      "email": "teacher@example.com",
+      "password": "SecurePass123!",
+      "full_name": "María García López",
+      "school_id": "550e8400-e29b-41d4-a716-446655440000",
+      "roles": ["teacher"]
+    }
+    ```
+  </Step>
+  
+  <Step title="Supabase Account Creation">
+    The system creates the user in Supabase Auth using the admin client:
+    - Generates UUID-based user ID
+    - Sets up authentication credentials
+    - Stores user metadata
+    
+    Source: `/home/daytona/workspace/source/athena-api/app/routers/admin.py:202`
+  </Step>
+  
+  <Step title="Database Record Creation">
+    After Supabase success:
+    - Creates or updates the `User` record
+    - Creates a `SchoolMembership` linking the user to the school
+    - Assigns the specified roles to the membership
+    - Sets user and membership as active
+  </Step>
+</Steps>
+
+### Role Validation
+
+Only school-level roles can be assigned during user creation:
+
+```python
+ALLOWED_MEMBERSHIP_ROLES = {
+  "rector", "coordinator", "secretary", 
+  "teacher", "student", "acudiente"
+}
+```
+
+Attempting to assign `superadmin` through memberships will fail with a validation error.
+
+Source: `/home/daytona/workspace/source/athena-api/app/schemas/admin_user.py:10`
+
+## Updating User Roles
+
+Roles can be modified for existing school memberships or added for new schools.
+
+<Steps>
+  <Step title="Identify the User">
+    Locate the user by their UUID. User IDs are returned when listing users or creating new ones.
+  </Step>
+  
+  <Step title="Specify School and Roles">
+    Update the membership with new role assignments:
+    
+    ```python
+    PATCH /admin/users/{user_id}/roles
+    {
+      "school_id": "550e8400-e29b-41d4-a716-446655440000",
+      "roles": ["teacher", "coordinator"]
+    }
+    ```
+    
+    This replaces all existing roles for the specified school.
+  </Step>
+  
+  <Step title="Membership Upsert Logic">
+    The system handles both scenarios:
+    - **Existing membership**: Updates roles and reactivates if needed
+    - **New membership**: Creates a new school membership for the user
+    
+    Source: `/home/daytona/workspace/source/athena-api/app/routers/admin.py:62`
+  </Step>
+</Steps>
+
+### Multi-School Assignments
+
+To add a user to a second school:
+
+1. Call the update roles endpoint with the new school's ID
+2. The system creates an additional membership
+3. User can now access both schools with different role sets
+
+```python
+# Add same user to another school as secretary
+PATCH /admin/users/{user_id}/roles
+{
+  "school_id": "660e8400-e29b-41d4-a716-446655440001",
+  "roles": ["secretary"]
+}
+```
+
+## Permission System
+
+Roles map to specific permissions that control feature access:
+
+### Rector Permissions
+
+```python
+{
+  "read:all", "write:all", "delete:all",
+  "config:institution", "manage:users",
+  "export:simat", "read:audit_log"
+}
+```
+
+Rectors have full access to all school features except creating other schools.
+
+### Coordinator Permissions
+
+```python
+{
+  "read:students", "read:grades", "read:attendance",
+  "write:convivencia", "write:due_process",
+  "read:communications", "write:communications",
+  "export:simat"
+}
+```
+
+Coordinators focus on discipline, student welfare, and academic oversight.
+
+### Secretary Permissions
+
+```python
+{
+  "read:students", "write:enrollment", "read:enrollment",
+  "write:communications", "read:communications",
+  "export:simat"
+}
+```
+
+Secretaries handle administrative tasks and student registration.
+
+### Teacher Permissions
+
+```python
+{
+  "read:own_students", "write:grades", "write:attendance",
+  "read:own_grades", "write:activities",
+  "read:schedule", "read:communications"
+}
+```
+
+Teachers access only their assigned students and classes.
+
+Source: `/home/daytona/workspace/source/athena-api/app/auth/permissions.py:18`
+
+## Permission Hierarchy
+
+The system implements wildcard permission matching:
+
+- `read:all` grants all read permissions
+- `write:all` grants all write permissions
+- `delete:all` grants all delete permissions
+
+Example: A user with `read:all` automatically has `read:students`, `read:grades`, etc.
+
+Source: `/home/daytona/workspace/source/athena-api/app/auth/permissions.py:78`
+
+## User Status Management
+
+### Activating Users
+
+Users are automatically set to active when:
+- Initially created
+- Roles are updated
+- Memberships are modified
+
+### Deactivating Users
+
+To deactivate a user, update their status in the database:
+- Set `User.is_active = false` for platform-wide deactivation
+- Set `SchoolMembership.is_active = false` for school-specific deactivation
+
+<Warning>
+  Currently, there is no API endpoint for deactivation. This must be done directly in the database or through a custom script.
+</Warning>
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="Password Requirements">
+    Passwords must be at least 8 characters. Supabase Auth handles password hashing and security policies.
+  </Accordion>
+  
+  <Accordion title="Email Uniqueness">
+    Email addresses must be unique across the platform. The same email cannot be used for multiple user accounts.
+  </Accordion>
+  
+  <Accordion title="Role Validation">
+    The system validates that only allowed roles are assigned to school memberships. Attempting to assign invalid roles results in a 400 error.
+  </Accordion>
+  
+  <Accordion title="School Context">
+    Users only see data from schools where they have active memberships. The current school context is determined by the user's authentication token.
+  </Accordion>
+</AccordionGroup>
+
+## Common Workflows
+
+### Creating a School Administrator
+
+```python
+POST /admin/users
+{
+  "email": "rector@colegio.edu.co",
+  "password": "SecurePassword123!",
+  "full_name": "Dr. Juan Pérez",
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "roles": ["rector"]
+}
+```
+
+### Creating a Multi-Role User
+
+```python
+POST /admin/users
+{
+  "email": "coordinator@colegio.edu.co",
+  "password": "SecurePassword123!",
+  "full_name": "Ana Martínez",
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "roles": ["coordinator", "teacher"]
+}
+```
+
+### Adding User to Second School
+
+```python
+# First, create the user in School A
+POST /admin/users
+{
+  "email": "teacher@example.com",
+  "password": "SecurePassword123!",
+  "full_name": "Carlos Rodríguez",
+  "school_id": "school-a-uuid",
+  "roles": ["teacher"]
+}
+
+# Then add them to School B
+PATCH /admin/users/{user_id}/roles
+{
+  "school_id": "school-b-uuid",
+  "roles": ["coordinator"]
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="User Creation Fails">
+    Common causes:
+    - Email already exists in Supabase
+    - School ID not found
+    - Invalid role codes
+    - Password too short
+    
+    Check the error response for specific details.
+  </Accordion>
+  
+  <Accordion title="User Cannot Access School">
+    Verify:
+    - User has an active membership for that school
+    - Membership `is_active` is true
+    - User `is_active` is true
+    - Roles are correctly assigned
+  </Accordion>
+  
+  <Accordion title="Permission Denied Errors">
+    Check:
+    - User's assigned roles include the required permission
+    - User is accessing within the correct school context
+    - Endpoint requires specific permissions (check API docs)
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="School Management" icon="building" href="/admin/school-management">
+    Create and configure schools
+  </Card>
+  <Card title="Role Overview" icon="shield" href="/roles/overview">
+    Learn about each role's capabilities
+  </Card>
+  <Card title="Permissions System" icon="lock" href="/architecture/backend/permissions">
+    Deep dive into permission architecture
+  </Card>
+  <Card title="Authentication" icon="key" href="/api/auth/overview">
+    Supabase Auth integration
+  </Card>
+</CardGroup>

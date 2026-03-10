@@ -1,0 +1,322 @@
+---
+title: "Rector Role"
+description: "Complete administrative control for school directors and principals"
+icon: "user-tie"
+---
+
+The **Rector** role represents the highest authority in a school within Athena ERP. This role is designed for school directors, principals, and other top administrators who need full control over all aspects of the institution.
+
+## Permissions
+
+Rectors have comprehensive access to all system functions:
+
+<CardGroup cols={2}>
+  <Card title="Full Read Access" icon="eye">
+    **Permission:** `read:all`
+    
+    View all data across the institution including students, grades, attendance, discipline records, and communications.
+  </Card>
+  
+  <Card title="Full Write Access" icon="pen">
+    **Permission:** `write:all`
+    
+    Create and modify any records in the system, including enrollments, grades, schedules, and institutional settings.
+  </Card>
+  
+  <Card title="Delete Access" icon="trash">
+    **Permission:** `delete:all`
+    
+    Remove records when necessary (with audit trail for compliance).
+  </Card>
+  
+  <Card title="User Management" icon="users">
+    **Permission:** `manage:users`
+    
+    Create, modify, and deactivate user accounts for staff, teachers, and students.
+  </Card>
+  
+  <Card title="Institution Configuration" icon="gear">
+    **Permission:** `config:institution`
+    
+    Configure school settings, academic years, grading scales, and system parameters.
+  </Card>
+  
+  <Card title="SIMAT Export" icon="file-export">
+    **Permission:** `export:simat`
+    
+    Generate official SIMAT exports for Colombian Ministry of Education reporting.
+  </Card>
+  
+  <Card title="Audit Logs" icon="clock-rotate-left">
+    **Permission:** `read:audit_log`
+    
+    Review system audit logs to track data access and modifications for compliance.
+  </Card>
+</CardGroup>
+
+## Common Workflows
+
+### Setting Up a New Academic Year
+
+<Steps>
+  <Step title="Configure School Year">
+    Navigate to **Settings > Academic Years** and create a new school year with start/end dates and grading periods.
+    
+    ```
+    POST /api/schools/{school_id}/years
+    Permission: config:institution
+    ```
+  </Step>
+  
+  <Step title="Define Class Groups">
+    Create class groups (grades and sections) for the new year under **Academic > Class Groups**.
+    
+    ```
+    POST /api/academic/class-groups
+    Permission: write:all
+    ```
+  </Step>
+  
+  <Step title="Assign Teachers">
+    Assign teachers to subjects and class groups in **Academic > Assignments**.
+    
+    ```
+    POST /api/academic/teacher-assignments
+    Permission: write:all
+    ```
+  </Step>
+  
+  <Step title="Open Enrollment">
+    Enable enrollment for the new year and communicate with families.
+  </Step>
+</Steps>
+
+### Managing Staff Accounts
+
+As Rector, you're responsible for creating and managing all user accounts:
+
+<Accordion title="Create a New Teacher">
+  1. Navigate to **Administration > Users**
+  2. Click **Create User**
+  3. Fill in personal information (full name, email, document)
+  4. Select role: `teacher`
+  5. Assign to subjects and class groups
+  
+  The teacher will receive login credentials and can immediately access their grade books.
+</Accordion>
+
+<Accordion title="Create a Coordinator">
+  1. Go to **Administration > Users**
+  2. Click **Create User**
+  3. Enter coordinator details
+  4. Select role: `coordinator`
+  5. Optionally add `secretary` role if they handle enrollments
+  
+  Coordinators gain access to discipline management and oversight tools.
+</Accordion>
+
+<Accordion title="Deactivate a User">
+  1. Find the user in **Administration > Users**
+  2. Click **Edit**
+  3. Toggle **Active** status to OFF
+  4. Save changes
+  
+  <Warning>
+    Deactivated users cannot log in but their historical data remains for auditing.
+  </Warning>
+</Accordion>
+
+### Reviewing Academic Performance
+
+Rectors can access comprehensive academic reports:
+
+<Tabs>
+  <Tab title="School-Wide Dashboard">
+    The main dashboard shows:
+    - Overall enrollment numbers
+    - Average grades by grade level
+    - Attendance rates
+    - Pending discipline cases
+    
+    Access via: **Dashboard** (homepage)
+  </Tab>
+  
+  <Tab title="Grade Reports">
+    View detailed grade reports:
+    - By student
+    - By class group
+    - By subject
+    - By grading period
+    
+    Access via: **Academic > Grades > Reports**
+  </Tab>
+  
+  <Tab title="SIMAT Exports">
+    Generate official reports:
+    1. Go to **Reports > SIMAT Export**
+    2. Select reporting period
+    3. Choose export type (enrollment, grades, etc.)
+    4. Download CSV file
+    
+    Files are formatted according to Colombian Ministry requirements.
+  </Tab>
+</Tabs>
+
+### Handling Discipline Cases
+
+While Coordinators typically manage discipline, Rectors have full access:
+
+<Steps>
+  <Step title="Review Cases">
+    Access **Discipline > Cases** to see all active and resolved cases.
+  </Step>
+  
+  <Step title="Monitor Due Process">
+    Ensure coordinators follow proper procedures for serious cases.
+  </Step>
+  
+  <Step title="Intervene When Needed">
+    Add notes, escalate cases, or apply final resolutions.
+    
+    ```
+    PATCH /api/discipline/cases/{case_id}
+    Permission: write:all
+    ```
+  </Step>
+  
+  <Step title="Generate Reports">
+    Export discipline statistics for administrative review.
+  </Step>
+</Steps>
+
+## Configuration Responsibilities
+
+Rectors configure institutional settings that affect all users:
+
+### Grading Scale
+
+Configure the grading scale to comply with Decreto 1290/2009:
+
+<CodeGroup>
+```json Traditional Scale (1.0 - 5.0)
+{
+  "scale_type": "numeric",
+  "min_value": 1.0,
+  "max_value": 5.0,
+  "passing_threshold": 3.0,
+  "performance_levels": [
+    {"level": "Superior", "min": 4.6, "max": 5.0},
+    {"level": "Alto", "min": 4.0, "max": 4.5},
+    {"level": "Básico", "min": 3.0, "max": 3.9},
+    {"level": "Bajo", "min": 1.0, "max": 2.9}
+  ]
+}
+```
+
+```json Percentage Scale
+{
+  "scale_type": "percentage",
+  "min_value": 0,
+  "max_value": 100,
+  "passing_threshold": 60
+}
+```
+</CodeGroup>
+
+### Academic Periods
+
+Define grading periods (bimesters, trimesters, or quarters):
+
+```json
+{
+  "school_year_id": "uuid-here",
+  "periods": [
+    {
+      "name": "Primer Bimestre",
+      "start_date": "2026-01-15",
+      "end_date": "2026-03-15",
+      "weight": 25
+    },
+    {
+      "name": "Segundo Bimestre",
+      "start_date": "2026-03-16",
+      "end_date": "2026-05-15",
+      "weight": 25
+    }
+    // ... more periods
+  ]
+}
+```
+
+### School Information
+
+Update institutional details visible in official documents:
+
+- School name
+- NIT (tax ID)
+- Resolution numbers
+- Contact information
+- Logo and official seals
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Delegate Appropriately">
+    While you have all permissions, delegate routine tasks:
+    - **Secretaries** handle enrollment processing
+    - **Coordinators** manage discipline and academic oversight
+    - **Teachers** enter grades and attendance
+    
+    Reserve your time for strategic decisions and oversight.
+  </Accordion>
+  
+  <Accordion title="Review Audit Logs Regularly">
+    Check audit logs monthly to:
+    - Verify proper data access patterns
+    - Identify unusual activity
+    - Ensure compliance with data protection laws
+    
+    Access via: **Administration > Audit Logs**
+  </Accordion>
+  
+  <Accordion title="Backup Before Major Changes">
+    Before bulk operations (like grade promotions), coordinate with your technical team to ensure recent backups exist.
+  </Accordion>
+  
+  <Accordion title="Multi-Role Consideration">
+    If you also teach classes, you may want both `rector` and `teacher` roles. This gives you the teacher-specific UI for your classes while retaining administrative access.
+  </Accordion>
+</AccordionGroup>
+
+## Compliance & Legal Considerations
+
+### Data Protection (Ley 1581/2012)
+
+As Rector, you're responsible for:
+
+<Check>Ensuring all staff with system access have proper authorization</Check>
+<Check>Reviewing data access logs as required by Colombian law</Check>
+<Check>Maintaining documentation of consent for data processing</Check>
+<Check>Responding to parent requests for data access or deletion</Check>
+
+### Academic Records Retention
+
+Follow Colombian Ministry of Education guidelines:
+
+- Maintain student records for minimum required periods
+- Do not delete historical academic data without legal justification
+- Export and archive data when students graduate or transfer
+
+## Related Roles
+
+<CardGroup cols={2}>
+  <Card title="Coordinator" icon="users-gear" href="/roles/coordinator">
+    Your primary collaborator for student affairs and discipline
+  </Card>
+  <Card title="Secretary" icon="clipboard" href="/roles/secretary">
+    Handles enrollment and administrative tasks
+  </Card>
+  <Card title="Teacher" icon="chalkboard-user" href="/roles/teacher">
+    If you teach classes, consider adding this role
+  </Card>
+</CardGroup>

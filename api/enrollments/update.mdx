@@ -1,0 +1,213 @@
+---
+title: "Update Enrollment"
+api: "PATCH /api/enrollments/{enrollment_id}"
+description: "Update an existing enrollment's information"
+---
+
+## Path Parameters
+
+<ParamField path="enrollment_id" type="uuid" required>
+  Unique identifier of the enrollment to update
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only include fields you want to update.
+
+<ParamField body="grade_level" type="string">
+  Update the grade level
+</ParamField>
+
+<ParamField body="group_code" type="string">
+  Update the group or class code
+</ParamField>
+
+<ParamField body="shift" type="string">
+  Update the school shift
+</ParamField>
+
+<ParamField body="status" type="string">
+  Update the enrollment status. When changed, this will be automatically tracked in the status_history array.
+  
+  Common status values:
+  - `pending_documents` - Awaiting document submission
+  - `active` - Enrollment is active
+  - `completed` - Enrollment completed
+  - `withdrawn` - Student withdrawn
+</ParamField>
+
+<ParamField body="status_history" type="array">
+  Manually update the status history array (advanced use only)
+</ParamField>
+
+<ParamField body="simat_status" type="object">
+  Update SIMAT (Colombian education system) status data
+</ParamField>
+
+<ParamField body="extra_data" type="object">
+  Update additional custom data for the enrollment
+</ParamField>
+
+## Response
+
+Returns the updated enrollment object with all fields.
+
+<ResponseField name="id" type="uuid">
+  Unique enrollment identifier
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  School identifier
+</ResponseField>
+
+<ResponseField name="student_id" type="uuid">
+  Student identifier
+</ResponseField>
+
+<ResponseField name="school_year_id" type="uuid">
+  School year identifier
+</ResponseField>
+
+<ResponseField name="grade_level" type="string">
+  Grade level
+</ResponseField>
+
+<ResponseField name="group_code" type="string" nullable>
+  Group or class code
+</ResponseField>
+
+<ResponseField name="shift" type="string" nullable>
+  School shift
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current enrollment status
+</ResponseField>
+
+<ResponseField name="status_history" type="array">
+  Array of status changes with timestamp and user who made the change
+</ResponseField>
+
+<ResponseField name="simat_status" type="object">
+  SIMAT status data
+</ResponseField>
+
+<ResponseField name="extra_data" type="object">
+  Additional custom data
+</ResponseField>
+
+<ResponseField name="student_name" type="string">
+  Full name of the student
+</ResponseField>
+
+<ResponseField name="school_year_name" type="string">
+  Name of the school year
+</ResponseField>
+
+<ResponseField name="documents" type="array">
+  Array of enrollment documents
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Timestamp when the enrollment was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Timestamp when the enrollment was last updated
+</ResponseField>
+
+<RequestExample>
+```bash Update Status
+curl -X PATCH "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "active"
+  }'
+```
+
+```bash Update Group and Shift
+curl -X PATCH "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_code": "B",
+    "shift": "afternoon"
+  }'
+```
+
+```bash Update Extra Data
+curl -X PATCH "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "extra_data": {
+      "special_needs": true,
+      "accommodation": "wheelchair_access",
+      "transportation": "parent_pickup"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "student_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "school_year_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "grade_level": "10°",
+  "group_code": "A",
+  "shift": "morning",
+  "status": "active",
+  "status_history": [
+    {
+      "status": "pending_documents",
+      "changed_at": "2024-01-15T10:30:00Z",
+      "changed_by": "d4e5f6a7-b8c9-0123-def1-234567890123"
+    },
+    {
+      "status": "active",
+      "changed_at": "2024-01-20T14:25:00Z",
+      "changed_by": "d4e5f6a7-b8c9-0123-def1-234567890123"
+    }
+  ],
+  "simat_status": {},
+  "extra_data": {
+    "special_needs": false,
+    "transportation": "school_bus"
+  },
+  "student_name": "Juan Pérez García",
+  "school_year_name": "2024",
+  "documents": [],
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-20T14:25:00Z"
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Matrícula no encontrada"
+}
+```
+</ResponseExample>
+
+## Status Workflow
+
+The enrollment status typically follows this workflow:
+
+1. **pending_documents** - Initial state when enrollment is created
+2. **active** - All documents uploaded and enrollment is active
+3. **completed** - School year completed
+4. **withdrawn** - Student withdrawn from enrollment
+
+When the status is changed, the system automatically:
+- Appends the change to the `status_history` array
+- Records the timestamp of the change
+- Records the user ID who made the change
+
+## Permissions Required
+
+- `write:enrollment`
+- `write:all`

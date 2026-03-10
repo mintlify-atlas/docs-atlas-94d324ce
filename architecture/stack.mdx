@@ -1,0 +1,347 @@
+---
+title: 'Technology Stack'
+description: 'Complete technology stack powering Athena ERP'
+icon: 'layer-group'
+---
+
+## Overview
+
+Athena ERP is built with a modern, scalable architecture designed for multi-tenant SaaS deployment. The stack prioritizes developer productivity, type safety, and compliance with Colombian regulations.
+
+## Frontend Stack
+
+### Core Framework
+
+| Technology | Version | Purpose |
+|------------|---------|----------|
+| **React** | 19.0.0 | UI framework with concurrent features |
+| **TypeScript** | 5.8.2 | Type safety and developer experience |
+| **Vite** | 6.2.0 | Build tool and dev server |
+| **React Router** | 7.13.1 | Client-side routing |
+
+### State Management & Data Fetching
+
+<CardGroup cols={2}>
+  <Card title="Zustand" icon="store">
+    Global state management with persist middleware for auth state
+  </Card>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    Server state management, caching, and synchronization
+  </Card>
+</CardGroup>
+
+### UI & Styling
+
+- **Tailwind CSS** 4.1.14 - Utility-first CSS framework
+- **Motion** 12.23.24 - Animation library for smooth transitions
+- **Lucide React** 0.546.0 - Icon library
+- **Recharts** 3.8.0 - Charts and data visualization
+- **Sonner** 2.0.7 - Toast notifications
+
+### Form Handling
+
+```typescript
+// React Hook Form + Zod validation pattern
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers';
+import { z } from 'zod';
+
+const schema = z.object({
+  document_number: z.string().min(6),
+  full_name: z.string().min(3),
+});
+```
+
+**Dependencies:**
+- React Hook Form 7.71.2
+- Zod 4.3.6
+- @hookform/resolvers 5.2.2
+
+### Authentication
+
+- **Supabase Auth** 2.98.0 - Managed authentication service
+- **JWT** tokens with refresh token rotation
+- Role-based access control (RBAC) enforced in both frontend and backend
+
+### HTTP Client
+
+- **Axios** 1.13.6 - HTTP client with interceptors for auth tokens
+- Base URL configuration via environment variables
+
+---
+
+## Backend Stack
+
+### Core Framework
+
+| Technology | Version | Purpose |
+|------------|---------|----------|
+| **Python** | 3.12+ | Language runtime |
+| **FastAPI** | 0.115+ | Modern async web framework |
+| **Uvicorn** | 0.34+ | ASGI server with standard extras |
+| **Pydantic** | 2.10+ | Data validation and settings |
+
+<Info>
+FastAPI automatically generates OpenAPI documentation at `/docs` (Swagger UI) and `/redoc` in development mode.
+</Info>
+
+### Database Layer
+
+<CardGroup cols={2}>
+  <Card title="SQLAlchemy 2.0" icon="database">
+    Async ORM for PostgreSQL with relationship loading and query optimization
+  </Card>
+  <Card title="Alembic" icon="code-branch">
+    Database migration management with version control
+  </Card>
+</CardGroup>
+
+**Key Dependencies:**
+- `sqlalchemy[asyncio]` 2.0+ - Core ORM with async support
+- `asyncpg` 0.30+ - Async PostgreSQL driver
+- `alembic` 1.14+ - Migration tool
+
+### Authentication & Security
+
+```python
+# JWT validation pattern
+from python_jose import jwt
+from app.auth.permissions import has_permission
+
+def decode_token(token: str) -> TokenPayload:
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm]
+    )
+    return TokenPayload(**payload)
+```
+
+**Dependencies:**
+- `python-jose[cryptography]` 3.3+ - JWT encoding/decoding
+- `httpx` 0.28+ - Async HTTP client for Supabase API
+
+### File Storage
+
+- **Cloudflare R2** via boto3 - S3-compatible object storage
+- `boto3` 1.35+ - AWS SDK for Python
+- `python-multipart` 0.0.20+ - File upload handling
+
+<Tip>
+R2 was chosen over S3 for **zero egress fees**, critical for document-heavy workflows like enrollment.
+</Tip>
+
+### Performance & Monitoring
+
+| Package | Purpose |
+|---------|----------|
+| **slowapi** 0.1.9+ | Rate limiting without Redis |
+| **sentry-sdk[fastapi]** 2.5+ | Error tracking and monitoring |
+
+### Development Tools
+
+```toml
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+    "factory-boy>=3.3",
+    "ruff>=0.9",
+]
+```
+
+---
+
+## Database
+
+### PostgreSQL
+
+<Card title="Supabase PostgreSQL" icon="elephant">
+  Managed PostgreSQL with free tier sufficient for 20-40 schools in MVP
+</Card>
+
+**Version:** PostgreSQL 15+
+
+**Key Features Used:**
+- JSONB columns for flexible metadata
+- Composite indexes for tenant isolation
+- Foreign key constraints with CASCADE/RESTRICT
+- Check constraints for data integrity
+- Async connection pooling (10 connections, 20 max overflow)
+
+### Why Not RLS?
+
+Athena **intentionally does not use Row Level Security (RLS)**:
+
+<CardGroup cols={2}>
+  <Card title="✅ Chosen Approach" icon="shield-check">
+    - Backend middleware enforces tenant isolation
+    - Testable with pytest
+    - Portable to any PostgreSQL
+    - Easier to debug
+  </Card>
+  <Card title="❌ Not Using RLS" icon="shield-xmark">
+    - Vendor lock-in to PostgreSQL RLS
+    - Logic split between DB and backend
+    - Harder to test isolation
+    - Difficult to debug leaks
+  </Card>
+</CardGroup>
+
+---
+
+## Hosting & Infrastructure
+
+### Development
+
+- **Frontend:** Vite dev server (port 3000)
+- **Backend:** Uvicorn with hot reload
+- **Database:** Local PostgreSQL or Supabase
+
+### MVP Deployment
+
+<Steps>
+  <Step title="Railway">
+    Backend API hosting with automatic deploys from Git
+  </Step>
+  <Step title="Supabase">
+    Managed PostgreSQL + Auth in free tier
+  </Step>
+  <Step title="Cloudflare R2">
+    Document storage (enrollment files, circulars, evidence)
+  </Step>
+</Steps>
+
+### Production Roadmap
+
+<Warning>
+For production with real student data, Colombian regulations require:
+- Database in South America region (GCP `southamerica-east1`)
+- Migration from Railway → GCP Cloud Run
+- Migration from Supabase → GCP Cloud SQL
+</Warning>
+
+---
+
+## Type Safety
+
+### Frontend ↔ Backend Contract
+
+```bash
+# CI pipeline generates TypeScript types from OpenAPI spec
+npx openapi-typescript http://localhost:8000/openapi.json -o src/api/types.ts
+```
+
+This ensures:
+- No manual interface duplication
+- Type errors caught at build time
+- API changes break the build immediately
+
+### Validation Layers
+
+<Steps>
+  <Step title="Frontend">
+    Zod schemas validate user input before submission
+  </Step>
+  <Step title="Backend">
+    Pydantic models validate request payloads
+  </Step>
+  <Step title="Database">
+    PostgreSQL constraints enforce data integrity
+  </Step>
+</Steps>
+
+---
+
+## Environment Configuration
+
+### Frontend (.env)
+
+```bash
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbG...
+```
+
+### Backend (.env)
+
+```bash
+# Database
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/athena_db
+
+# Auth
+JWT_SECRET=super-secret-key-change-in-prod
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=xxx  # Backend only, never in frontend
+
+# R2
+R2_ENDPOINT_URL=https://xxx.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=xxx
+R2_SECRET_ACCESS_KEY=xxx
+R2_BUCKET_NAME=athena-docs
+
+# Monitoring
+SENTRY_DSN=xxx
+ENVIRONMENT=development
+```
+
+<Warning>
+**Never** expose service role keys or secrets in frontend environment variables (no `VITE_` prefix).
+</Warning>
+
+---
+
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Client
+        A[React App<br/>TypeScript + Vite]
+        B[Zustand<br/>Auth State]
+        C[TanStack Query<br/>Server State]
+    end
+    
+    subgraph Backend
+        D[FastAPI<br/>Python 3.12]
+        E[SQLAlchemy<br/>Async ORM]
+        F[Auth Middleware<br/>Tenant Isolation]
+    end
+    
+    subgraph Data Layer
+        G[(PostgreSQL<br/>Supabase)]
+        H[Cloudflare R2<br/>Object Storage]
+        I[Supabase Auth<br/>JWT]
+    end
+    
+    A --> D
+    B --> I
+    C --> D
+    D --> F
+    F --> E
+    E --> G
+    D --> H
+    I --> D
+    
+    style A fill:#61dafb
+    style D fill:#009688
+    style G fill:#336791
+    style I fill:#3ecf8e
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="diagram-project" href="/architecture/database">
+    Explore the complete database design and relationships
+  </Card>
+  <Card title="Multi-Tenancy" icon="building" href="/architecture/multi-tenancy">
+    Learn how tenant isolation is implemented
+  </Card>
+</CardGroup>

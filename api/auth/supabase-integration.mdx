@@ -1,0 +1,523 @@
+---
+title: Supabase Integration
+description: How Athena ERP integrates with Supabase for authentication
+icon: key
+---
+
+## Overview
+
+Athena ERP uses **Supabase Auth** as its identity provider. While Supabase handles user authentication (login, signup, password reset), Athena maintains its own authorization model in PostgreSQL.
+
+This hybrid approach provides:
+- ✅ Battle-tested authentication flows (OAuth, magic links, MFA)
+- ✅ Flexible authorization with school-specific roles
+- ✅ Database-driven permission resolution
+- ✅ Multi-tenant support via school memberships
+
+## Architecture
+
+```
+┌─────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Client    │         │   Supabase   │         │  Athena API  │
+│             │────────▶│     Auth     │         │              │
+│             │  Login  │              │         │              │
+└─────────────┘         └──────────────┘         └──────────────┘
+       │                        │                        │
+       │                        │                        │
+       │◀───────────────────────┘                        │
+       │       JWT Token                                 │
+       │                                                 │
+       │─────────────────────────────────────────────────▶
+       │            Request + Bearer Token               │
+       │                                                 │
+       │                                         ┌───────▼────────┐
+       │                                         │  JWT Validation│
+       │                                         │  + DB Lookup   │
+       │                                         └───────┬────────┘
+       │                                                 │
+       │◀─────────────────────────────────────────────────┘
+       │              Authorized Response
+```
+
+## JWT Validation Process
+
+Athena implements a **two-tier validation** strategy to handle JWT tokens reliably:
+
+### Tier 1: Local JWT Decode
+
+The API first attempts to decode the JWT using the shared `JWT_SECRET`:
+
+```python
+# app/auth/jwt.py:26-37
+payload = jwt.decode(
+    token,
+    settings.jwt_secret,
+    algorithms=[settings.jwt_algorithm],
+)
+```
+
+<ParamField path="token" type="string" required>
+  The raw JWT token from the `Authorization: Bearer` header
+</ParamField>
+
+<ParamField path="settings.jwt_secret" type="string" required>
+  The JWT secret shared with Supabase (from `SUPABASE_JWT_SECRET`)
+</ParamField>
+
+<ParamField path="settings.jwt_algorithm" type="string" default="HS256">
+  The signing algorithm (must match Supabase configuration)
+</ParamField>
+
+### Tier 2: Supabase User Info Endpoint
+
+If local decoding fails (e.g., during key rotation), Athena falls back to Supabase's `/auth/v1/user` endpoint:
+
+**Implementation**: `app/auth/jwt.py:64-98`
+
+```python
+response = httpx.get(
+    f"{base_url}/auth/v1/user",
+    headers={
+        "apikey": settings.supabase_anon_key,
+        "Authorization": f"Bearer {token}",
+    },
+    timeout=10.0,
+)
+```
+
+This endpoint validates the token server-side and returns the user payload.
+
+<Warning>
+The Supabase URL is **never inferred from the token**. It must be explicitly configured in `SUPABASE_URL` to prevent SSRF attacks.
+</Warning>
+
+### Issuer Verification
+
+After decoding, Athena verifies the token's issuer matches the configured Supabase project:
+
+```python
+# app/auth/jwt.py:42-45
+expected_issuer = f"{settings.supabase_url}/auth/v1"
+if payload.get("iss") != expected_issuer:
+    raise HTTPException(401, "Token inválido")
+```
+
+This prevents accepting tokens from other Supabase projects or malicious issuers.
+
+## Token Payload Mapping
+
+Athena extracts the following fields from Supabase JWT:
+
+### Standard Claims
+
+<ResponseField name="sub" type="string" required>
+  User ID in UUID format. Used to lookup the user in Athena's `users` table.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  User's email address (synced with Supabase).
+</ResponseField>
+
+<ResponseField name="iss" type="string" required>
+  JWT issuer. Must be `{SUPABASE_URL}/auth/v1`.
+</ResponseField>
+
+### App Metadata (Optional)
+
+<ResponseField name="app_metadata.school_id" type="string">
+  Suggested school context (UUID). The API validates this against `school_memberships`.
+</ResponseField>
+
+<ResponseField name="app_metadata.roles" type="array">
+  JWT-level roles (e.g., `["superadmin"]`). Combined with database roles for authorization.
+</ResponseField>
+
+<Note>
+`app_metadata` is set in Supabase during user creation or updated via Supabase Management API. It provides **hints** but is not the source of truth for authorization.
+</Note>
+
+## Database Authorization
+
+After JWT validation, Athena resolves the user's actual permissions by querying the local database:
+
+### Step 1: Fetch User
+
+```python
+# app/deps.py:49-73
+result = await db.execute(
+    select(User).where(User.id == uuid.UUID(payload.sub))
+)
+user = result.scalar_one_or_none()
+
+if not user:
+    raise HTTPException(401, "Usuario no encontrado en la base local")
+if not user.is_active:
+    raise HTTPException(403, "Usuario inactivo")
+```
+
+### Step 2: Fetch School Memberships
+
+```python
+# app/deps.py:82-88
+memberships = await db.execute(
+    select(SchoolMembership).where(
+        SchoolMembership.user_id == current_user.id,
+        SchoolMembership.is_active == True,
+    )
+)
+```
+
+### Step 3: Resolve School Context
+
+The active school is determined by (in order):
+
+1. **`X-School-Id` header** (explicit)
+2. **JWT `app_metadata.school_id`** (fallback)
+3. **Single membership** (automatic)
+
+```python
+# app/deps.py:91-96
+requested_school_id = x_school_id or payload.school_id
+
+if requested_school_id:
+    membership = memberships_by_school.get(requested_school_id)
+    if not membership and not has_permission(payload.roles, "manage:schools"):
+        raise HTTPException(403, "No tienes acceso al colegio solicitado")
+```
+
+### Step 4: Build Auth Context
+
+The final `AuthContext` contains:
+
+<ResponseField name="user" type="User">
+  The authenticated user object from the database.
+</ResponseField>
+
+<ResponseField name="payload" type="TokenPayload">
+  The decoded JWT payload.
+</ResponseField>
+
+<ResponseField name="membership" type="SchoolMembership">
+  The active school membership (if a school is selected).
+</ResponseField>
+
+<ResponseField name="school" type="School">
+  The active school object (if a school is selected).
+</ResponseField>
+
+<ResponseField name="memberships" type="array">
+  All active school memberships for the user.
+</ResponseField>
+
+<ResponseField name="roles" type="array">
+  **Combined roles** from JWT `app_metadata.roles` and `membership.roles`.
+</ResponseField>
+
+## Configuration
+
+### Required Environment Variables
+
+```bash
+# Supabase Project URL
+SUPABASE_URL=https://xyzcompany.supabase.co
+
+# Supabase Anonymous Key (for client-side auth)
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Supabase Service Role Key (for admin operations)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# JWT Secret (MUST match Supabase project JWT secret)
+JWT_SECRET=your-super-secret-jwt-secret-from-supabase
+JWT_ALGORITHM=HS256
+```
+
+<Tip>
+You can find your Supabase JWT secret in the Supabase Dashboard under **Settings → API → JWT Settings**.
+</Tip>
+
+### Development vs Production
+
+**Development:**
+```bash
+# .env.development
+SUPABASE_URL=http://localhost:54321  # Local Supabase
+JWT_SECRET=super-secret-local-dev-key-change-in-prod
+```
+
+**Production:**
+```bash
+# .env.production
+SUPABASE_URL=https://your-project.supabase.co
+JWT_SECRET=<actual-supabase-jwt-secret>
+SUPABASE_ANON_KEY=<actual-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<actual-service-role-key>
+```
+
+<Warning>
+Never commit production secrets to version control. Use environment-specific `.env` files or a secrets manager.
+</Warning>
+
+## Endpoint: GET /auth/me
+
+Retrieve the authenticated user's profile, including roles and school memberships.
+
+### Request
+
+```bash
+curl -X GET 'https://api.athena.edu.co/api/v1/auth/me' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' \
+  -H 'X-School-Id: 550e8400-e29b-41d4-a716-446655440000'
+```
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token from Supabase authentication.
+  
+  Format: `Bearer {access_token}`
+</ParamField>
+
+<ParamField header="X-School-Id" type="string">
+  Optional UUID of the school to use as context. Required if user has multiple memberships.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  User's UUID.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address.
+</ResponseField>
+
+<ResponseField name="full_name" type="string">
+  User's full name.
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the user account is active.
+</ResponseField>
+
+<ResponseField name="roles" type="array">
+  Combined roles from JWT and active school membership.
+</ResponseField>
+
+<ResponseField name="school_id" type="string">
+  UUID of the active school (if one is selected).
+</ResponseField>
+
+<ResponseField name="memberships" type="array">
+  List of all active school memberships.
+  
+  <Expandable title="Membership Object">
+    <ResponseField name="id" type="string">
+      Membership UUID.
+    </ResponseField>
+    <ResponseField name="school_id" type="string">
+      School UUID.
+    </ResponseField>
+    <ResponseField name="roles" type="array">
+      Roles assigned in this school (e.g., `["teacher", "coordinator"]`).
+    </ResponseField>
+    <ResponseField name="is_active" type="boolean">
+      Whether this membership is active.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 timestamp of membership creation.
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO 8601 timestamp of last update.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "email": "maria.garcia@colegio.edu.co",
+  "full_name": "María García",
+  "is_active": true,
+  "roles": ["teacher", "coordinator"],
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "memberships": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "school_id": "550e8400-e29b-41d4-a716-446655440000",
+      "roles": ["teacher", "coordinator"],
+      "is_active": true,
+      "created_at": "2024-01-15T08:30:00Z",
+      "updated_at": "2024-03-10T14:20:00Z"
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "school_id": "660f9511-f3ac-52e5-b827-557766551111",
+      "roles": ["teacher"],
+      "is_active": true,
+      "created_at": "2024-02-01T10:00:00Z",
+      "updated_at": "2024-02-01T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+<ResponseField name="401 Unauthorized" type="error">
+  Token is missing, invalid, or expired.
+  
+  ```json
+  {
+    "detail": "Token inválido, expirado o malformado"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403 Forbidden" type="error">
+  User account is inactive or lacks permission to access the requested school.
+  
+  ```json
+  {
+    "detail": "Usuario inactivo"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="400 Bad Request" type="error">
+  User has multiple memberships but no `X-School-Id` header provided.
+  
+  ```json
+  {
+    "detail": "Debes enviar el header X-School-Id para elegir un colegio"
+  }
+  ```
+</ResponseField>
+
+## Best Practices
+
+### Token Refresh
+
+Supabase tokens expire after 1 hour by default. Implement token refresh in your client:
+
+```javascript
+// Example with @supabase/supabase-js
+const { data, error } = await supabase.auth.refreshSession()
+if (data?.session) {
+  const newAccessToken = data.session.access_token
+  // Use newAccessToken for API calls
+}
+```
+
+### Multi-Tenant Requests
+
+For users with multiple school memberships, always include `X-School-Id`:
+
+```bash
+# Good: Explicit school context
+curl -H "X-School-Id: 550e8400-e29b-41d4-a716-446655440000" \
+     -H "Authorization: Bearer {token}" \
+     https://api.athena.edu.co/api/v1/students
+```
+
+### Error Handling
+
+Always handle `401` and `403` errors by redirecting to login or showing an error message:
+
+```javascript
+try {
+  const response = await fetch('/api/v1/auth/me', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  if (response.status === 401) {
+    // Token expired - redirect to login
+    window.location.href = '/login'
+  }
+} catch (error) {
+  console.error('Authentication failed:', error)
+}
+```
+
+## Security Considerations
+
+### JWT Secret Management
+
+- **Never expose** `JWT_SECRET` to clients
+- **Rotate secrets** periodically using Supabase dashboard
+- **Use environment variables** instead of hardcoding
+
+### Token Storage
+
+- Store tokens in **httpOnly cookies** (preferred) or secure localStorage
+- Never store tokens in URL parameters
+- Clear tokens on logout
+
+### SSRF Protection
+
+Athena prevents Server-Side Request Forgery by:
+- Never parsing the `iss` claim to make HTTP requests
+- Only using server-configured `SUPABASE_URL`
+- Validating the issuer against a whitelist
+
+### Rate Limiting
+
+Consider implementing rate limiting on authentication endpoints to prevent:
+- Brute force attacks
+- Token enumeration
+- DDoS attempts
+
+## Troubleshooting
+
+### "Token inválido, expirado o malformado"
+
+**Causes:**
+- Token has expired (>1 hour old)
+- JWT secret mismatch between Athena and Supabase
+- Token was issued by a different Supabase project
+
+**Solutions:**
+1. Refresh the token using Supabase client
+2. Verify `JWT_SECRET` matches Supabase project settings
+3. Check `SUPABASE_URL` points to the correct project
+
+### "Usuario no encontrado en la base local"
+
+**Cause:** User exists in Supabase but not in Athena's database.
+
+**Solution:** Create a user record in Athena's `users` table:
+
+```sql
+INSERT INTO users (id, email, full_name, is_active)
+VALUES (
+  'uuid-from-supabase-auth',
+  'user@example.com',
+  'User Name',
+  true
+);
+```
+
+### "Debes enviar el header X-School-Id para elegir un colegio"
+
+**Cause:** User has multiple school memberships but no school was specified.
+
+**Solution:** Include `X-School-Id` header in all requests:
+
+```bash
+curl -H "X-School-Id: 550e8400-e29b-41d4-a716-446655440000" ...
+```
+
+## Related Resources
+
+<Card title="Authentication Overview" icon="shield-check" href="/api/auth/overview">
+  Learn about Athena's authentication architecture
+</Card>
+
+<Card title="Permissions Reference" icon="lock" href="/api/auth/permissions">
+  View the complete role and permission matrix
+</Card>
+
+<Card title="Supabase Documentation" icon="external-link" href="https://supabase.com/docs/guides/auth">
+  Official Supabase Auth documentation
+</Card>

@@ -1,0 +1,415 @@
+---
+title: "Coordinator Role"
+description: "Academic oversight, discipline management, and student affairs"
+icon: "users-gear"
+---
+
+The **Coordinator** role is designed for academic coordinators and administrators who oversee student affairs, manage discipline processes, and support academic operations. This role has broad read access and specific write permissions for student-related activities.
+
+## Permissions
+
+<CardGroup cols={2}>
+  <Card title="Student Records" icon="address-card">
+    **Permission:** `read:students`
+    
+    View all student profiles, enrollment information, and personal data across the institution.
+  </Card>
+  
+  <Card title="Academic Grades" icon="chart-line">
+    **Permission:** `read:grades`
+    
+    Access grade books and academic performance data for all students and teachers.
+  </Card>
+  
+  <Card title="Attendance Records" icon="clipboard-check">
+    **Permission:** `read:attendance`
+    
+    View attendance records across all classes and grade levels.
+  </Card>
+  
+  <Card title="Discipline Management" icon="gavel">
+    **Permission:** `write:convivencia`
+    
+    Create and manage discipline cases, behavioral reports, and convivencia records.
+  </Card>
+  
+  <Card title="Due Process" icon="scale-balanced">
+    **Permission:** `write:due_process`
+    
+    Document and track formal discipline procedures according to school policies.
+  </Card>
+  
+  <Card title="Communications" icon="bullhorn">
+    **Permission:** `read:communications`, `write:communications`
+    
+    Send and receive messages, circulars, and announcements to students and parents.
+  </Card>
+  
+  <Card title="SIMAT Export" icon="file-export">
+    **Permission:** `export:simat`
+    
+    Generate SIMAT exports for ministry reporting.
+  </Card>
+</CardGroup>
+
+## Common Workflows
+
+### Managing Discipline Cases
+
+Coordinators are primarily responsible for handling discipline and convivencia:
+
+<Steps>
+  <Step title="Create New Case">
+    When a discipline incident occurs:
+    
+    1. Navigate to **Discipline > New Case**
+    2. Fill in incident details:
+       - Date and time
+       - Location
+       - Description of incident
+       - Category (behavioral, academic, safety)
+       - Severity (minor, moderate, serious, severe)
+    
+    ```
+    POST /api/discipline/cases
+    Permission: write:convivencia
+    ```
+  </Step>
+  
+  <Step title="Add Participants">
+    Link involved parties to the case:
+    - Students (primary and secondary)
+    - Witnesses
+    - Reporting teacher
+    - Parents/guardians
+    
+    ```
+    POST /api/discipline/cases/{case_id}/participants
+    Permission: write:convivencia
+    ```
+  </Step>
+  
+  <Step title="Document Events">
+    Track the discipline process:
+    - Initial report
+    - Student interview
+    - Parent notification
+    - Corrective measures applied
+    - Follow-up meetings
+    
+    Each event is timestamped and auditable.
+  </Step>
+  
+  <Step title="Apply Resolution">
+    Choose appropriate resolution:
+    - Verbal warning
+    - Written warning  
+    - Parent conference
+    - Suspension
+    - Behavior contract
+    - Escalation to rector
+    
+    ```
+    PATCH /api/discipline/cases/{case_id}
+    {
+      "phase": "resolved",
+      "resolution_type": "parent_conference",
+      "resolution_notes": "..."
+    }
+    ```
+  </Step>
+  
+  <Step title="Monitor & Follow-Up">
+    Track student progress after resolution and document any repeat incidents.
+  </Step>
+</Steps>
+
+### Academic Oversight
+
+While teachers enter grades, coordinators monitor academic performance:
+
+<Tabs>
+  <Tab title="Monitor Grade Entry">
+    **Track grading progress:**
+    
+    1. Go to **Academic > Grades > Overview**
+    2. Filter by grading period
+    3. View which teachers have completed grade entry
+    4. Identify missing or incomplete grade books
+    
+    <Info>
+      You can view grades but cannot modify them. Contact the teacher or rector for corrections.
+    </Info>
+  </Tab>
+  
+  <Tab title="Identify At-Risk Students">
+    **Find students who need intervention:**
+    
+    1. Navigate to **Academic > Reports > Performance**
+    2. Filter for students below passing threshold
+    3. Generate list grouped by:
+       - Grade level
+       - Subject area
+       - Number of failing subjects
+    4. Coordinate with teachers for intervention plans
+  </Tab>
+  
+  <Tab title="Attendance Analysis">
+    **Monitor attendance patterns:**
+    
+    1. Access **Attendance > Reports**
+    2. View attendance rates by:
+       - Individual student
+       - Class group
+       - Time period
+    3. Identify chronic absenteeism
+    4. Contact parents for students with concerning patterns
+  </Tab>
+</Tabs>
+
+### Parent Communication
+
+Coordinators frequently communicate with families:
+
+<AccordionGroup>
+  <Accordion title="Send Individual Messages">
+    Contact a specific parent or guardian:
+    
+    1. Go to **Students > [Student Name] > Guardians**
+    2. Click **Send Message**
+    3. Write message regarding academic or behavioral concerns
+    4. Message is delivered via email and in-app notification
+    
+    ```
+    POST /api/communications/messages
+    Permission: write:communications
+    ```
+  </Accordion>
+  
+  <Accordion title="Create Circulars">
+    Send announcements to multiple families:
+    
+    1. Navigate to **Communications > Circulars**
+    2. Click **New Circular**
+    3. Select recipients:
+       - All families
+       - Specific grade level
+       - Specific class groups
+    4. Write announcement and attach documents if needed
+    5. Schedule or send immediately
+    
+    Examples:
+    - Important date changes
+    - Academic expectations
+    - Convivencia reminders
+  </Accordion>
+  
+  <Accordion title="Schedule Parent Meetings">
+    Organize parent conferences:
+    
+    1. Access **Communications > Meetings**
+    2. Create meeting invitation
+    3. Specify purpose and required attendees
+    4. Set date, time, and location
+    5. Send notification to parents
+    
+    The system tracks attendance and allows documentation of meeting outcomes.
+  </Accordion>
+</AccordionGroup>
+
+### Supporting Enrollment
+
+Coordinators often support the enrollment process:
+
+<Note>
+  While secretaries typically process enrollments, coordinators may be involved in reviewing applications and making admission decisions.
+</Note>
+
+**Review Pending Enrollments:**
+
+1. Navigate to **Enrollments > Pending Review**
+2. View student applications with uploaded documents
+3. Check document completeness
+4. Add notes or request additional information
+5. Coordinate with secretary for final approval
+
+## Daily Responsibilities
+
+### Morning Routine
+
+<Steps>
+  <Step title="Check Dashboard">
+    Review daily summary:
+    - New discipline cases requiring attention
+    - Attendance alerts for chronic absenteeism
+    - Pending communications
+  </Step>
+  
+  <Step title="Review Overnight Incidents">
+    Check if teachers reported any issues that need immediate attention.
+  </Step>
+  
+  <Step title="Prepare for Meetings">
+    Review calendar for scheduled parent conferences or student interventions.
+  </Step>
+</Steps>
+
+### Weekly Tasks
+
+<CheckList>
+  <Check>Review all new discipline cases and ensure proper documentation</Check>
+  <Check>Analyze attendance reports and contact parents as needed</Check>
+  <Check>Meet with teachers to discuss student concerns</Check>
+  <Check>Send weekly circular to parents (if scheduled)</Check>
+  <Check>Monitor grade entry progress during grading periods</Check>
+  <Check>Follow up on ongoing discipline interventions</Check>
+</CheckList>
+
+## Reports You Can Generate
+
+<CardGroup cols={2}>
+  <Card title="Discipline Summary" icon="chart-bar">
+    Statistics on:
+    - Cases by category
+    - Cases by severity
+    - Resolution types
+    - Repeat offenders
+    - Trends over time
+  </Card>
+  
+  <Card title="Attendance Report" icon="calendar-check">
+    Analysis of:
+    - Overall attendance rate
+    - Absences by student
+    - Absences by class
+    - Tardiness patterns
+  </Card>
+  
+  <Card title="Academic Performance" icon="graduation-cap">
+    Overview of:
+    - Grade distribution
+    - Students below passing
+    - Subject-specific challenges
+    - Comparison across periods
+  </Card>
+  
+  <Card title="SIMAT Export" icon="file-csv">
+    Official exports:
+    - Enrollment data
+    - Academic results
+    - Discipline records
+    - Formatted per Ministry requirements
+  </Card>
+</CardGroup>
+
+## Collaboration with Other Roles
+
+### Working with Teachers
+
+<Tabs>
+  <Tab title="Student Concerns">
+    Teachers report behavioral or academic issues:
+    - You create discipline cases based on teacher reports
+    - You coordinate interventions for struggling students
+    - You support teachers with difficult classroom situations
+  </Tab>
+  
+  <Tab title="Grade Issues">
+    Teachers contact you about:
+    - Grade corrections (you escalate to rector)
+    - Student disputes about grades
+    - Missing assignment concerns
+  </Tab>
+  
+  <Tab title="Attendance">
+    You monitor what teachers record:
+    - Review attendance patterns
+    - Investigate suspicious patterns
+    - Support teachers with chronic absenteeism
+  </Tab>
+</Tabs>
+
+### Working with Rector
+
+- **Escalate serious discipline cases** for final decisions
+- **Report on academic trends** during administrative meetings  
+- **Request policy changes** based on discipline patterns
+- **Coordinate school-wide initiatives**
+
+### Working with Secretary
+
+- **Review enrollment applications** together
+- **Coordinate parent communications** about enrollment
+- **Share SIMAT export responsibilities**
+
+## What You Cannot Do
+
+Understand your permission limitations:
+
+<Warning>
+  **Cannot modify grades** - Only teachers can enter/edit grades. If a correction is needed, ask the teacher or rector.
+</Warning>
+
+<Warning>
+  **Cannot create users** - Only rector can create teacher, coordinator, or secretary accounts.
+</Warning>
+
+<Warning>
+  **Cannot delete students** - Student deletion requires rector permission for data integrity.
+</Warning>
+
+<Warning>
+  **Cannot change system configuration** - School settings, grading scales, and academic years are rector-only.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Document Everything">
+    For discipline cases, thorough documentation is critical:
+    - Record exact times and locations
+    - Use objective, factual language
+    - Include all relevant witnesses
+    - Track every interaction with students and parents
+    - Maintain records for legal protection
+  </Accordion>
+  
+  <Accordion title="Follow Due Process">
+    For serious discipline cases:
+    - Ensure student rights are protected
+    - Notify parents promptly
+    - Allow student to present their perspective
+    - Apply progressive discipline when appropriate
+    - Document all steps taken
+  </Accordion>
+  
+  <Accordion title="Respond Promptly">
+    Parents and teachers expect timely responses:
+    - Check communications daily
+    - Acknowledge receipt of concerns within 24 hours
+    - Set clear timelines for resolution
+    - Follow up as promised
+  </Accordion>
+  
+  <Accordion title="Use Data for Prevention">
+    Be proactive with analytics:
+    - Identify patterns in discipline data
+    - Address systemic issues before they escalate
+    - Share insights with teachers and administration
+    - Propose preventive interventions
+  </Accordion>
+</AccordionGroup>
+
+## Related Roles
+
+<CardGroup cols={2}>
+  <Card title="Rector" icon="user-tie" href="/roles/rector">
+    Escalate serious cases and receive administrative guidance
+  </Card>
+  <Card title="Secretary" icon="clipboard" href="/roles/secretary">
+    Collaborate on enrollment and parent communications
+  </Card>
+  <Card title="Teacher" icon="chalkboard-user" href="/roles/teacher">
+    Receive reports and provide support
+  </Card>
+</CardGroup>

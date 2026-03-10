@@ -1,0 +1,640 @@
+---
+title: "State Management"
+description: "Zustand and React Query state management patterns in Athena ERP"
+---
+
+## Overview
+
+Athena ERP uses a **hybrid state management** approach, combining:
+
+- **Zustand** for global application state (authentication, preferences)
+- **React Query** for server state (data fetching, caching, mutations)
+- **React useState** for local component state
+- **react-hook-form** for form state
+
+This architecture separates concerns and optimizes each state type with specialized tools.
+
+## Global State with Zustand
+
+### Authentication Store
+
+The primary Zustand store manages authentication state:
+
+```typescript title="src/store/authStore.ts"
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export type Role =
+  | 'rector'
+  | 'coordinator'
+  | 'secretary'
+  | 'teacher'
+  | 'student'
+  | 'acudiente'
+  | 'superadmin';
+
+export interface Membership {
+  id: string;
+  school_id: string;
+  roles: Role[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  roles: Role[];
+  schoolId: string | null;
+  memberships: Membership[];
+  avatar?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  impersonatedSchoolId: string | null;
+  login: (user: User, token: string) => void;
+  logout: () => void;
+  setImpersonatedSchoolId: (id: string | null) => void;
+}
+
+export const useAuthStore = create<AuthState>()()
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      impersonatedSchoolId: null,
+      
+      login: (user, token) =>
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          impersonatedSchoolId: user.schoolId,
+        }),
+      
+      logout: () =>
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          impersonatedSchoolId: null,
+        }),
+      
+      setImpersonatedSchoolId: (id) => set({ impersonatedSchoolId: id }),
+    }),
+    {
+      name: 'athena-auth-storage', // LocalStorage key
+    }
+  )
+);
+```
+
+**Key features:**
+
+1. **Persistence**: State persists to LocalStorage via `persist` middleware
+2. **Multi-tenancy**: Supports school impersonation for superadmins
+3. **Role-based access**: Stores user roles for authorization
+4. **Token management**: Stores JWT token for API requests
+5. **Memberships**: Tracks user memberships across multiple schools
+
+### Using the Auth Store
+
+```tsx
+import { useAuthStore } from '../store/authStore';
+
+function MyComponent() {
+  // Subscribe to specific state slices
+  const { user, isAuthenticated } = useAuthStore();
+  const logout = useAuthStore((state) => state.logout);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  return (
+    <div>
+      <p>Welcome, {user?.name}</p>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+}
+```
+
+### Accessing Store Outside React
+
+Zustand stores can be accessed outside React components:
+
+```typescript title="src/api/client.ts"
+import { useAuthStore } from '../store/authStore';
+
+// Access store state in interceptors
+apiClient.interceptors.request.use((config) => {
+  const { token, impersonatedSchoolId } = useAuthStore.getState();
+  
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  if (impersonatedSchoolId && config.headers) {
+    config.headers['X-School-Id'] = impersonatedSchoolId;
+  }
+  
+  return config;
+});
+```
+
+## Server State with React Query
+
+### Query Client Configuration
+
+```tsx title="src/main.tsx"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      retry: 1,                    // Retry failed requests once
+    },
+  },
+});
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </StrictMode>,
+);
+```
+
+### Query Hooks Pattern
+
+Custom hooks encapsulate data fetching logic:
+
+```typescript title="src/hooks/useStudents.ts"
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
+
+export interface Student {
+  id: string;
+  school_id: string;
+  document_type: string;
+  document_number: string;
+  full_name: string;
+  birth_date?: string;
+  gender?: string;
+  grade?: string;
+  grade_group?: string;
+  is_active: boolean;
+  extra_data: Record<string, any>;
+}
+
+export interface StudentListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  items: Student[];
+}
+
+// List query with pagination and filters
+export function useStudents(params: { 
+  page?: number; 
+  page_size?: number; 
+  search?: string; 
+  grade?: string 
+} = {}) {
+  return useQuery({
+    queryKey: ['students', params],
+    queryFn: async () => {
+      const { data } = await apiClient.get<StudentListResponse>('/students', { params });
+      return {
+        ...data,
+        items: (data.items || []).map(normalizeStudent),
+      };
+    },
+  });
+}
+
+// Detail query
+export function useStudentDetail(id: string) {
+  return useQuery({
+    queryKey: ['students', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Student>(`/students/${id}`);
+      return normalizeStudent(data);
+    },
+    enabled: !!id, // Only run if id is present
+  });
+}
+
+// Create mutation
+export function useCreateStudent() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (student: Omit<Student, 'id' | 'school_id'>) => {
+      const { data } = await apiClient.post<Student>('/students', student);
+      return normalizeStudent(data);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch students list
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    },
+  });
+}
+
+// Update mutation
+export function useUpdateStudent() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<Student> & { id: string }) => {
+      const { data: responseData } = await apiClient.patch<Student>(`/students/${id}`, data);
+      return normalizeStudent(responseData);
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate specific student and list
+      queryClient.invalidateQueries({ queryKey: ['students', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+    },
+  });
+}
+```
+
+### Using Query Hooks in Components
+
+```tsx
+import { useStudents, useCreateStudent } from '../hooks/useStudents';
+
+function EstudiantesPage() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+
+  // Query with pagination
+  const { data, isLoading, isError } = useStudents({ 
+    page, 
+    page_size: 20, 
+    search 
+  });
+
+  // Create mutation
+  const createMutation = useCreateStudent();
+
+  const handleCreate = async (studentData: any) => {
+    try {
+      await createMutation.mutateAsync(studentData);
+      toast.success('Estudiante creado exitosamente');
+    } catch (error) {
+      toast.error('Error al crear estudiante');
+    }
+  };
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <ErrorMessage />;
+
+  return (
+    <div>
+      <h1>Estudiantes ({data?.total})</h1>
+      <SearchInput value={search} onChange={setSearch} />
+      
+      <Table>
+        {data?.items.map(student => (
+          <TableRow key={student.id}>
+            <td>{student.full_name}</td>
+            <td>{student.grade}</td>
+          </TableRow>
+        ))}
+      </Table>
+
+      <Pagination page={page} onChange={setPage} />
+      
+      <Button 
+        onClick={() => handleCreate(newStudentData)}
+        isLoading={createMutation.isPending}
+      >
+        Crear Estudiante
+      </Button>
+    </div>
+  );
+}
+```
+
+### Query Key Strategy
+
+**Hierarchical query keys** for efficient invalidation:
+
+```typescript
+// All students
+['students']
+
+// Students with filters
+['students', { page: 1, search: 'juan' }]
+
+// Specific student
+['students', '123']
+
+// Student enrollments
+['students', '123', 'enrollments']
+```
+
+**Invalidation examples:**
+
+```typescript
+// Invalidate all student queries
+queryClient.invalidateQueries({ queryKey: ['students'] });
+
+// Invalidate only paginated lists
+queryClient.invalidateQueries({ 
+  queryKey: ['students'], 
+  exact: false,
+  predicate: (query) => Array.isArray(query.queryKey[1])
+});
+
+// Invalidate specific student
+queryClient.invalidateQueries({ queryKey: ['students', '123'] });
+```
+
+## API Client Configuration
+
+### Axios Instance with Interceptors
+
+```typescript title="src/api/client.ts"
+import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
+
+// Create axios instance
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+});
+
+// Request interceptor: Add auth token and school context
+apiClient.interceptors.request.use((config) => {
+  const { token, impersonatedSchoolId } = useAuthStore.getState();
+  
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  if (impersonatedSchoolId && config.headers) {
+    config.headers['X-School-Id'] = impersonatedSchoolId;
+  }
+  
+  return config;
+});
+
+// Response interceptor: Handle global errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - logout user
+      useAuthStore.getState().logout();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+**Features:**
+- Automatic token injection
+- Multi-tenancy via `X-School-Id` header
+- Global 401 handling (auto-logout)
+- Base URL from environment variables
+
+## Form State with react-hook-form
+
+### Form with Validation
+
+```tsx
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+// Validation schema
+const studentSchema = z.object({
+  document_number: z.string().min(1, 'Documento requerido'),
+  full_name: z.string().min(3, 'Nombre debe tener al menos 3 caracteres'),
+  birth_date: z.string().optional(),
+  grade: z.string().min(1, 'Grado requerido'),
+});
+
+type StudentFormData = z.infer<typeof studentSchema>;
+
+function StudentForm() {
+  const createMutation = useCreateStudent();
+  
+  const { register, handleSubmit, formState: { errors } } = useForm<StudentFormData>({
+    resolver: zodResolver(studentSchema),
+    defaultValues: {
+      document_number: '',
+      full_name: '',
+      grade: '',
+    },
+  });
+
+  const onSubmit = async (data: StudentFormData) => {
+    try {
+      await createMutation.mutateAsync(data);
+      toast.success('Estudiante creado');
+    } catch (error) {
+      toast.error('Error al crear estudiante');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Input
+        {...register('document_number')}
+        label="Documento"
+        error={errors.document_number?.message}
+      />
+      
+      <Input
+        {...register('full_name')}
+        label="Nombre completo"
+        error={errors.full_name?.message}
+      />
+      
+      <Select
+        {...register('grade')}
+        label="Grado"
+        error={errors.grade?.message}
+      >
+        <option value="">Seleccione...</option>
+        <option value="1">Primero</option>
+        <option value="2">Segundo</option>
+      </Select>
+
+      <Button type="submit" isLoading={createMutation.isPending}>
+        Guardar
+      </Button>
+    </form>
+  );
+}
+```
+
+## Local Component State
+
+### useState for UI State
+
+```tsx
+function StudentList() {
+  // UI state: modals, dropdowns, filters
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Server state from React Query
+  const { data: students } = useStudents({ search: searchTerm });
+
+  return (
+    <div>
+      <SearchInput value={searchTerm} onChange={setSearchTerm} />
+      
+      <Table>
+        {students?.items.map(student => (
+          <TableRow 
+            key={student.id}
+            onClick={() => {
+              setSelectedStudent(student);
+              setIsModalOpen(true);
+            }}
+          >
+            <td>{student.full_name}</td>
+          </TableRow>
+        ))}
+      </Table>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+      >
+        <StudentDetails student={selectedStudent} />
+      </Modal>
+    </div>
+  );
+}
+```
+
+## State Management Best Practices
+
+### When to Use Each Tool
+
+| State Type | Tool | Use Case |
+|------------|------|----------|
+| **Authentication** | Zustand | User session, tokens, roles |
+| **App preferences** | Zustand | Theme, language, UI settings |
+| **Server data** | React Query | API data, background sync |
+| **Form inputs** | react-hook-form | Complex forms with validation |
+| **UI state** | useState | Modals, dropdowns, local toggles |
+| **Derived state** | useMemo | Computed values from props/state |
+
+### Performance Optimization
+
+#### Selective Subscriptions (Zustand)
+
+```tsx
+// ❌ Bad: Re-renders on any auth state change
+const authState = useAuthStore();
+
+// ✅ Good: Only re-renders when user changes
+const user = useAuthStore((state) => state.user);
+```
+
+#### Query Stale Time (React Query)
+
+```typescript
+// Configure stale time for less frequent refetches
+const { data } = useStudents({
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+```
+
+#### Optimistic Updates
+
+```typescript
+export function useUpdateStudent() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<Student> & { id: string }) => {
+      const { data: responseData } = await apiClient.patch(`/students/${id}`, data);
+      return responseData;
+    },
+    
+    // Optimistically update UI before server response
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['students', variables.id] });
+      
+      const previousStudent = queryClient.getQueryData(['students', variables.id]);
+      
+      queryClient.setQueryData(['students', variables.id], (old: any) => ({
+        ...old,
+        ...variables,
+      }));
+      
+      return { previousStudent };
+    },
+    
+    // Rollback on error
+    onError: (err, variables, context) => {
+      queryClient.setQueryData(
+        ['students', variables.id],
+        context?.previousStudent
+      );
+    },
+    
+    // Always refetch after success or error
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['students', variables.id] });
+    },
+  });
+}
+```
+
+### Debugging
+
+#### React Query Devtools
+
+```tsx
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+```
+
+#### Zustand DevTools
+
+```typescript
+import { devtools } from 'zustand/middleware';
+
+export const useAuthStore = create<AuthState>()()
+  devtools(
+    persist(
+      (set) => ({ /* ... */ }),
+      { name: 'athena-auth-storage' }
+    ),
+    { name: 'AuthStore' }
+  )
+);
+```
+
+## Related Documentation
+
+- [React Architecture](/architecture/frontend/react)
+- [Routing Architecture](/architecture/frontend/routing)
+- [FastAPI Backend](/architecture/backend/fastapi)

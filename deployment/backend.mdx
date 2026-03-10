@@ -1,0 +1,488 @@
+---
+title: Backend Deployment
+description: Deploy the Athena ERP FastAPI backend to production
+---
+
+## Overview
+
+The Athena ERP backend is a FastAPI application built with Python 3.12. This guide covers deploying to various platforms.
+
+## Prerequisites
+
+- Python 3.12 or higher
+- PostgreSQL 16+ database (see [Database Setup](/deployment/database))
+- Environment variables configured (see [Environment Variables](/deployment/environment-variables))
+
+## Technology Stack
+
+- **Framework**: FastAPI 0.115+
+- **Server**: Uvicorn with standard extras
+- **Database ORM**: SQLAlchemy 2.0 (async)
+- **Migrations**: Alembic 1.14+
+- **Database Driver**: asyncpg 0.30+
+- **Authentication**: python-jose with cryptography
+- **File Storage**: boto3 (S3-compatible for R2)
+- **Error Tracking**: Sentry SDK
+
+## Directory Structure
+
+```
+athena-api/
+├── app/
+│   ├── main.py              # FastAPI application
+│   ├── config.py            # Configuration settings
+│   ├── database.py          # Database connection
+│   ├── models/              # SQLAlchemy models
+│   ├── routers/             # API routes
+│   ├── services/            # Business logic
+│   └── utils/               # Utilities
+├── alembic/                 # Database migrations
+├── scripts/                 # Deployment scripts
+│   ├── create_superadmin.py
+│   └── seed_supabase_auth_users.sh
+├── tests/                   # Test suite
+├── Dockerfile               # Container definition
+├── docker-compose.yml       # Local development
+├── pyproject.toml           # Dependencies
+└── alembic.ini             # Migration config
+```
+
+---
+
+## Deployment to Railway
+
+[Railway](https://railway.app) is the recommended platform for deploying the Athena backend.
+
+### Step 1: Prepare Your Repository
+
+Ensure your code is pushed to GitHub:
+
+```bash
+cd athena-api
+git add .
+git commit -m "Prepare for Railway deployment"
+git push origin main
+```
+
+### Step 2: Create Railway Project
+
+1. Go to [railway.app](https://railway.app) and sign in
+2. Click **New Project**
+3. Select **Deploy from GitHub repo**
+4. Choose your repository
+5. Railway will auto-detect the Python project
+
+### Step 3: Configure Build Settings
+
+Railway should auto-detect the build, but verify:
+
+- **Root Directory**: `athena-api`
+- **Build Command**: `pip install -e .`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+### Step 4: Add Environment Variables
+
+In Railway dashboard → Variables, add:
+
+```bash
+ENVIRONMENT=production
+DATABASE_URL=postgresql+asyncpg://user:pass@host:port/db
+JWT_SECRET=<generate-secure-secret>
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+CORS_ORIGINS=https://your-frontend-domain.com
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+SENTRY_DSN=https://xxxx@xxxx.ingest.sentry.io/xxxx
+```
+
+<Warning>
+  Generate a secure JWT secret:
+  ```bash
+  python -c "import secrets; print(secrets.token_urlsafe(32))"
+  ```
+</Warning>
+
+### Step 5: Run Database Migrations
+
+In Railway → Settings → Deploy, add a custom build script:
+
+```bash
+pip install -e . && alembic upgrade head
+```
+
+Or run manually via Railway CLI:
+
+```bash
+railway run alembic upgrade head
+```
+
+### Step 6: Create Superadmin User
+
+After deployment, create an admin user:
+
+```bash
+railway run python scripts/create_superadmin.py \
+  --id <supabase-user-uuid> \
+  --email admin@yourdomain.com \
+  --full-name "Admin User"
+```
+
+### Step 7: Generate Domain
+
+Railway will provide a domain like `your-app.up.railway.app`. You can:
+
+- Use the Railway domain
+- Add a custom domain in Railway → Settings → Networking
+
+---
+
+## Deployment to Render
+
+[Render](https://render.com) is another excellent option.
+
+### Step 1: Create Web Service
+
+1. Go to [render.com](https://render.com) and sign in
+2. Click **New +** → **Web Service**
+3. Connect your GitHub repository
+4. Configure:
+   - **Name**: `athena-api`
+   - **Root Directory**: `athena-api`
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -e .`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+### Step 2: Add Environment Variables
+
+In Render dashboard → Environment, add all required variables (same as Railway).
+
+### Step 3: Deploy
+
+Render will automatically deploy. Monitor the logs for any errors.
+
+### Step 4: Run Migrations
+
+Create a migration job or run via Render Shell:
+
+```bash
+alembic upgrade head
+```
+
+---
+
+## Docker Deployment
+
+For self-hosted or container-based deployments.
+
+### Build Image
+
+```bash
+cd athena-api
+docker build -t athena-api:latest .
+```
+
+### Run Container
+
+```bash
+docker run -d \
+  --name athena-api \
+  -p 8000:8000 \
+  -e ENVIRONMENT=production \
+  -e DATABASE_URL="postgresql+asyncpg://user:pass@host:port/db" \
+  -e JWT_SECRET="your-secret" \
+  -e CORS_ORIGINS="https://your-domain.com" \
+  athena-api:latest
+```
+
+### Docker Compose (Full Stack)
+
+```yaml
+services:
+  api:
+    build: ./athena-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql+asyncpg://athena:password@db:5432/athena_db
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=athena
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=athena_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+Run with:
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Manual Deployment (VPS/Bare Metal)
+
+For deploying to a VPS like DigitalOcean, Linode, or AWS EC2.
+
+### Step 1: Install Dependencies
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Python 3.12
+sudo apt install python3.12 python3.12-venv python3-pip -y
+
+# Install PostgreSQL client libraries
+sudo apt install libpq-dev -y
+
+# Install supervisor for process management
+sudo apt install supervisor -y
+```
+
+### Step 2: Clone Repository
+
+```bash
+cd /opt
+sudo git clone https://github.com/your-org/athena-erp.git
+cd athena-erp/athena-api
+```
+
+### Step 3: Create Virtual Environment
+
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+### Step 4: Configure Environment
+
+```bash
+cp .env.example .env
+nano .env  # Edit with your production values
+```
+
+### Step 5: Run Migrations
+
+```bash
+alembic upgrade head
+```
+
+### Step 6: Configure Supervisor
+
+Create `/etc/supervisor/conf.d/athena-api.conf`:
+
+```ini
+[program:athena-api]
+command=/opt/athena-erp/athena-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+directory=/opt/athena-erp/athena-api
+user=www-data
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/athena-api.err.log
+stdout_logfile=/var/log/athena-api.out.log
+environment=PATH="/opt/athena-erp/athena-api/venv/bin"
+```
+
+Start the service:
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start athena-api
+```
+
+### Step 7: Configure Nginx (Optional)
+
+Create `/etc/nginx/sites-available/athena-api`:
+
+```nginx
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Enable and restart:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/athena-api /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### Step 8: Setup SSL with Certbot
+
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d api.yourdomain.com
+```
+
+---
+
+## Post-Deployment
+
+### Verify Deployment
+
+1. **Health Check**:
+   ```bash
+   curl https://your-api-domain.com/health
+   ```
+
+   Should return:
+   ```json
+   {"status": "healthy"}
+   ```
+
+2. **API Documentation**:
+   Visit `https://your-api-domain.com/docs` for interactive API docs
+
+3. **Test Authentication**:
+   ```bash
+   curl -X POST https://your-api-domain.com/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email": "admin@yourdomain.com", "password": "yourpassword"}'
+   ```
+
+### Create Superadmin
+
+Run the superadmin script:
+
+```bash
+cd athena-api
+python scripts/create_superadmin.py \
+  --id <uuid-from-supabase> \
+  --email admin@yourdomain.com \
+  --full-name "Admin User"
+```
+
+Or use environment variables:
+
+```bash
+export SUPERADMIN_ID="<uuid>"
+export SUPERADMIN_EMAIL="admin@yourdomain.com"
+export SUPERADMIN_FULL_NAME="Admin User"
+python scripts/create_superadmin.py
+```
+
+### Monitor Logs
+
+**Railway**: View logs in dashboard
+
+**Render**: View logs in dashboard
+
+**Docker**:
+```bash
+docker logs -f athena-api
+```
+
+**Supervisor**:
+```bash
+sudo tail -f /var/log/athena-api.out.log
+```
+
+---
+
+## Scaling
+
+### Horizontal Scaling
+
+The API is stateless and can be scaled horizontally:
+
+- **Railway**: Adjust replicas in Settings → Scale
+- **Render**: Adjust instance count in Settings → Scaling
+- **Docker**: Use Docker Swarm or Kubernetes
+- **Manual**: Run multiple Uvicorn workers:
+  ```bash
+  uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+  ```
+
+### Database Connection Pooling
+
+For high traffic, use Supabase's Session pooler or configure pgBouncer.
+
+---
+
+## Troubleshooting
+
+### "Module not found" errors
+
+```bash
+pip install -e .
+```
+
+### "Database connection failed"
+
+Check:
+- DATABASE_URL format is correct
+- Database is accessible from your hosting environment
+- For Supabase, use pooler port 6543
+
+### "CORS errors"
+
+Verify:
+- Frontend URL is in CORS_ORIGINS
+- No trailing slashes
+- Protocol matches (http/https)
+
+### "JWT decode error"
+
+Ensure:
+- JWT_SECRET matches across all instances
+- JWT_SECRET matches Supabase JWT secret (if using Supabase auth)
+
+### Migrations fail
+
+```bash
+# Check current revision
+alembic current
+
+# Show migration history
+alembic history
+
+# Downgrade if needed
+alembic downgrade -1
+
+# Then upgrade
+alembic upgrade head
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Setup" icon="database" href="/deployment/database">
+    Configure PostgreSQL and run migrations
+  </Card>
+  <Card title="Frontend Deployment" icon="window" href="/deployment/frontend">
+    Deploy the React frontend
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/deployment/environment-variables">
+    Complete configuration reference
+  </Card>
+  <Card title="API Documentation" icon="book" href="/api-reference/introduction">
+    Explore the API endpoints
+  </Card>
+</CardGroup>

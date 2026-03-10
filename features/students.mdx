@@ -1,0 +1,279 @@
+---
+title: Student Management
+description: Manage student records, guardian information, and student profiles
+icon: users
+---
+
+The student management module provides comprehensive tools for maintaining student records, managing guardian relationships, and tracking important student information throughout their time at your school.
+
+## Overview
+
+Student records in Athena ERP serve as the central profile for each student, containing:
+
+- **Basic identification** - Document type/number, full name, birth date, gender
+- **Guardian relationships** - Multiple guardians with roles and permissions
+- **Academic history** - Links to enrollments across school years
+- **Special needs (PIAR)** - Individualized adjustment plans for students requiring accommodations
+- **Custom data** - Flexible fields for school-specific information
+
+<Info>
+Student records persist across school years, while enrollments are year-specific. One student can have many enrollments.
+</Info>
+
+## Creating Student Records
+
+### Manual Entry
+
+1. Navigate to **Students** → **Add Student**
+2. Enter required information:
+   - Document type (TI, CC, CE, etc.)
+   - Document number
+   - Full name
+   - Birth date
+   - Gender
+3. Optionally add guardian information
+4. Click **Save**
+
+<Tip>
+Document type and number combination must be unique within your school.
+</Tip>
+
+### Bulk Import
+
+For large-scale student registration:
+
+1. Navigate to **Students** → **Bulk Upload**
+2. Download the CSV template
+3. Fill in student information (name, document type/number, gender)
+4. Upload the completed CSV
+5. Review validation report
+   - Successfully created students
+   - Errors (duplicates, missing required fields)
+   - Skipped rows
+
+**CSV format:**
+```csv
+nombre_completo,tipo_documento,numero_documento,genero
+Juan Pérez García,TI,1234567890,M
+María López Torres,TI,0987654321,F
+```
+
+<Note>
+The system automatically skips duplicate students (same document type and number) and reports them in the error list.
+</Note>
+
+## Guardian Management
+
+Guardians are parents, legal guardians, or authorized contacts for students.
+
+### Adding Guardians
+
+When creating or editing a student:
+
+1. Scroll to **Guardians** section
+2. Click **Add Guardian**
+3. Enter guardian information:
+   - Document type and number
+   - Full name
+   - Phone and email
+   - Address
+   - Occupation and workplace
+4. Define the relationship to student:
+   - Relationship type (mother, father, guardian, etc.)
+   - Priority (1 = primary contact, 2 = secondary, etc.)
+   - Is primary contact?
+   - Can pick up student?
+   - Is emergency contact?
+
+### Guardian Relationships
+
+Each student can have multiple guardians with different roles:
+
+<AccordionGroup>
+  <Accordion title="Primary Guardian">
+    Main point of contact for school communications. Typically the parent or legal guardian with primary custody.
+    
+    **Settings:**
+    - `is_primary`: true
+    - `priority`: 1
+    - Receives all school notifications by default
+  </Accordion>
+  
+  <Accordion title="Secondary Contacts">
+    Additional parents, guardians, or family members who should receive important updates.
+    
+    **Settings:**
+    - `priority`: 2 or higher
+    - May or may not have pickup authorization
+  </Accordion>
+  
+  <Accordion title="Pickup Authorization">
+    Individuals authorized to pick up the student from school.
+    
+    **Settings:**
+    - `can_pickup`: true
+    - Used by security and dismissal processes
+  </Accordion>
+  
+  <Accordion title="Emergency Contacts">
+    People to contact in case of emergency when primary guardian is unavailable.
+    
+    **Settings:**
+    - `is_emergency_contact`: true
+    - `priority`: determines order of contact
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Guardian information is reused across students. If multiple students share the same guardian (siblings), updating the guardian's phone or email affects all linked students.
+</Warning>
+
+## Student Search and Filtering
+
+Quickly find students using powerful search and filter options:
+
+**Search by:**
+- Full name (partial match)
+- Document number (exact or partial match)
+
+**Filter by:**
+- Active/inactive status
+- Grade level (via enrollment)
+- Pagination (20, 50, or 100 per page)
+
+**List displays:**
+- Student name
+- Document type and number
+- Age (calculated from birth date)
+- Active status
+- Guardian contact information
+- Current enrollment status
+
+## Student Profile View
+
+Click any student to see their complete profile:
+
+### Personal Information
+- Full identification details
+- Contact information via guardians
+- Birth date and age
+- Gender
+- Active/inactive status
+
+### Guardian Information
+- All linked guardians ordered by priority
+- Relationship types
+- Contact details
+- Authorization flags (pickup, emergency)
+
+### Enrollment History
+- All enrollments across school years
+- Current enrollment status
+- Grade progression
+- Quick links to enrollment details
+
+### Special Needs (PIAR)
+
+<Info>
+PIAR (Plan Individual de Ajustes Razonables) is Colombia's framework for individualized education plans for students with disabilities or special needs.
+</Info>
+
+Store PIAR information in the `piar_data` field:
+- Diagnosed conditions or disabilities
+- Required accommodations
+- Individualized learning adjustments
+- Support services needed
+- Progress tracking
+
+PIAR data is structured as flexible JSON to accommodate various requirements.
+
+### Custom Fields (Extra Data)
+
+The `extra_data` field stores school-specific information:
+- Blood type
+- Allergies or medical conditions
+- Transportation method
+- Extracurricular activities
+- Parent consent forms
+- Any other custom data your school needs
+
+## Updating Student Information
+
+### Edit Student Details
+
+1. Navigate to student profile
+2. Click **Edit**
+3. Update any fields
+4. Click **Save**
+
+Changes are tracked with timestamps and the user who made updates.
+
+### Managing Active Status
+
+Set `is_active` to false when:
+- Student permanently transfers to another school
+- Student is no longer enrolled
+- Record needs to be archived but preserved
+
+<Tip>
+Inactive students don't appear in default lists but can still be searched and accessed. Their historical data remains intact.
+</Tip>
+
+## Integration with Other Modules
+
+Student records connect to:
+
+- **Enrollments** - Each enrollment links to a student
+- **Academic** - Class rosters, grades, and attendance reference students
+- **Discipline** - Behavioral cases involve students
+- **Communications** - Circulars and notifications reach guardian contacts
+
+## Permissions
+
+| Action | Required Permission |
+|--------|--------------------|
+| View students | `read:students` or `read:own_students` or `read:all` |
+| Create students | `write:enrollment` or `write:all` |
+| Edit students | `write:enrollment` or `write:all` |
+| Bulk upload | `write:all` |
+| View guardians | `read:students` or `read:own_students` or `read:all` |
+| Manage guardians | `write:enrollment` or `write:all` |
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify Documents" icon="id-card">
+    Always verify official documents before entering student information. Accurate records are essential for legal and administrative purposes.
+  </Card>
+  
+  <Card title="Keep Guardians Updated" icon="address-book">
+    Regularly request updates to guardian contact information. Out-of-date phone numbers and emails hinder emergency communications.
+  </Card>
+  
+  <Card title="PIAR Documentation" icon="notes-medical">
+    Maintain detailed PIAR records for students requiring accommodations. This ensures continuity of support across teachers and school years.
+  </Card>
+  
+  <Card title="Privacy Protection" icon="shield-check">
+    Student records contain sensitive information. Only grant access to staff members who need it for their role.
+  </Card>
+</CardGroup>
+
+## Data Privacy and Security
+
+Athena ERP protects student data through:
+
+- **Role-based access** - Only authorized staff can view/edit student records
+- **Audit trails** - All changes tracked with timestamp and user
+- **Tenant isolation** - Schools only access their own student data
+- **Secure storage** - Data encrypted at rest and in transit
+
+<Warning>
+Never share student document numbers, addresses, or guardian contact information with unauthorized individuals.
+</Warning>
+
+## Related Features
+
+- [Enrollment Management](/features/enrollment) - Create and manage student enrollments
+- [Academic Management](/features/academic) - Assign students to classes and track grades
+- [Communications](/features/communications) - Send circulars to student guardians

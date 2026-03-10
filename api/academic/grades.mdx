@@ -1,0 +1,423 @@
+---
+title: "Grades"
+description: "Manage evaluation activities and student scores"
+---
+
+The grades API allows you to create evaluation activities (tasks, exams, projects) and record student scores for those activities.
+
+## Evaluation Activities
+
+Evaluation activities are assessments that students complete for a specific course offering. They can be weighted and have different types.
+
+### Create Evaluation Activity
+
+<ParamField body="course_offering_id" type="uuid" required>
+  ID of the course offering this activity belongs to
+</ParamField>
+
+<ParamField body="teacher_assignment_id" type="uuid" required>
+  ID of the teacher assignment who created this activity
+</ParamField>
+
+<ParamField body="academic_period_id" type="uuid" required>
+  ID of the academic period (quarter, semester, etc.)
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Title of the evaluation activity
+</ParamField>
+
+<ParamField body="activity_type" type="string" required>
+  Type of activity: `task`, `quiz`, `exam`, `workshop`, `project`, or `other`
+</ParamField>
+
+<ParamField body="weight" type="float" required>
+  Weight of this activity in the final grade (0-100)
+</ParamField>
+
+<ParamField body="is_gradable" type="boolean" default="true">
+  Whether this activity affects the student's grade
+</ParamField>
+
+<ParamField body="due_at" type="datetime">
+  Due date and time for the activity
+</ParamField>
+
+<ParamField body="attachments" type="array">
+  Array of attachment objects (files, links, etc.)
+</ParamField>
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the activity
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  ID of the school
+</ResponseField>
+
+<ResponseField name="course_offering_id" type="uuid">
+  ID of the course offering
+</ResponseField>
+
+<ResponseField name="teacher_assignment_id" type="uuid">
+  ID of the teacher assignment
+</ResponseField>
+
+<ResponseField name="academic_period_id" type="uuid">
+  ID of the academic period
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Title of the activity
+</ResponseField>
+
+<ResponseField name="activity_type" type="string">
+  Type of activity
+</ResponseField>
+
+<ResponseField name="weight" type="float">
+  Weight in final grade (0-100)
+</ResponseField>
+
+<ResponseField name="is_gradable" type="boolean">
+  Whether this activity is gradable
+</ResponseField>
+
+<ResponseField name="due_at" type="datetime">
+  Due date and time
+</ResponseField>
+
+<ResponseField name="attachments" type="array">
+  Array of attachments
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Last update timestamp
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/academic/activities" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "academic_period_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "title": "Midterm Exam",
+    "activity_type": "exam",
+    "weight": 30.0,
+    "is_gradable": true,
+    "due_at": "2024-03-15T10:00:00Z",
+    "attachments": []
+  }'
+```
+
+```python Python
+import requests
+from datetime import datetime
+
+response = requests.post(
+    "https://api.athena-erp.com/academic/activities",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+        "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+        "academic_period_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+        "title": "Midterm Exam",
+        "activity_type": "exam",
+        "weight": 30.0,
+        "is_gradable": True,
+        "due_at": "2024-03-15T10:00:00Z",
+        "attachments": []
+    }
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+  "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+  "academic_period_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+  "title": "Midterm Exam",
+  "activity_type": "exam",
+  "weight": 30.0,
+  "is_gradable": true,
+  "due_at": "2024-03-15T10:00:00Z",
+  "attachments": [],
+  "created_at": "2024-02-01T14:30:00Z",
+  "updated_at": "2024-02-01T14:30:00Z"
+}
+```
+</ResponseExample>
+
+### List Evaluation Activities
+
+<ParamField query="teacher_assignment_id" type="uuid">
+  Filter by teacher assignment
+</ParamField>
+
+<ParamField query="course_offering_id" type="uuid">
+  Filter by course offering
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/activities?course_offering_id=a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/activities",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "academic_period_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "title": "Midterm Exam",
+    "activity_type": "exam",
+    "weight": 30.0,
+    "is_gradable": true,
+    "due_at": "2024-03-15T10:00:00Z",
+    "attachments": [],
+    "created_at": "2024-02-01T14:30:00Z",
+    "updated_at": "2024-02-01T14:30:00Z"
+  },
+  {
+    "id": "e5f6a7b8-c9d0-4e1f-b2c3-d4e5f6a7b8c9",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "academic_period_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "title": "Homework Assignment 1",
+    "activity_type": "task",
+    "weight": 10.0,
+    "is_gradable": true,
+    "due_at": "2024-02-20T23:59:00Z",
+    "attachments": [],
+    "created_at": "2024-02-05T09:15:00Z",
+    "updated_at": "2024-02-05T09:15:00Z"
+  }
+]
+```
+</ResponseExample>
+
+## Activity Scores
+
+Activity scores represent the grades students receive for specific evaluation activities.
+
+### Create Activity Score
+
+<ParamField body="evaluation_activity_id" type="uuid" required>
+  ID of the evaluation activity
+</ParamField>
+
+<ParamField body="course_enrollment_id" type="uuid" required>
+  ID of the course enrollment
+</ParamField>
+
+<ParamField body="student_id" type="uuid" required>
+  ID of the student
+</ParamField>
+
+<ParamField body="score" type="float" required>
+  Score value (0.0 to 5.0)
+</ParamField>
+
+<ParamField body="observations" type="string">
+  Optional observations or comments about the score
+</ParamField>
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the score record
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  ID of the school
+</ResponseField>
+
+<ResponseField name="evaluation_activity_id" type="uuid">
+  ID of the evaluation activity
+</ResponseField>
+
+<ResponseField name="course_enrollment_id" type="uuid">
+  ID of the course enrollment
+</ResponseField>
+
+<ResponseField name="student_id" type="uuid">
+  ID of the student
+</ResponseField>
+
+<ResponseField name="score" type="float">
+  Score value (0.0 to 5.0)
+</ResponseField>
+
+<ResponseField name="observations" type="string">
+  Observations or comments
+</ResponseField>
+
+<ResponseField name="recorded_by" type="uuid">
+  ID of the user who recorded the score
+</ResponseField>
+
+<ResponseField name="recorded_at" type="datetime">
+  Timestamp when the score was recorded
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Last update timestamp
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/academic/scores" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "course_enrollment_id": "f6a7b8c9-d0e1-4f2a-c3d4-e5f6a7b8c9d0",
+    "student_id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+    "score": 4.5,
+    "observations": "Excellent work, well organized"
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.athena-erp.com/academic/scores",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+        "course_enrollment_id": "f6a7b8c9-d0e1-4f2a-c3d4-e5f6a7b8c9d0",
+        "student_id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+        "score": 4.5,
+        "observations": "Excellent work, well organized"
+    }
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": "b8c9d0e1-f2a3-4b4c-e5f6-a7b8c9d0e1f2",
+  "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+  "course_enrollment_id": "f6a7b8c9-d0e1-4f2a-c3d4-e5f6a7b8c9d0",
+  "student_id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+  "score": 4.5,
+  "observations": "Excellent work, well organized",
+  "recorded_by": "c9d0e1f2-a3b4-4c5d-f6a7-b8c9d0e1f2a3",
+  "recorded_at": "2024-03-16T11:20:00Z",
+  "created_at": "2024-03-16T11:20:00Z",
+  "updated_at": "2024-03-16T11:20:00Z"
+}
+```
+</ResponseExample>
+
+### List Activity Scores
+
+<ParamField query="evaluation_activity_id" type="uuid">
+  Filter by evaluation activity
+</ParamField>
+
+<ParamField query="student_id" type="uuid">
+  Filter by student
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/scores?evaluation_activity_id=d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/scores",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "b8c9d0e1-f2a3-4b4c-e5f6-a7b8c9d0e1f2",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "course_enrollment_id": "f6a7b8c9-d0e1-4f2a-c3d4-e5f6a7b8c9d0",
+    "student_id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+    "score": 4.5,
+    "observations": "Excellent work, well organized",
+    "recorded_by": "c9d0e1f2-a3b4-4c5d-f6a7-b8c9d0e1f2a3",
+    "recorded_at": "2024-03-16T11:20:00Z",
+    "created_at": "2024-03-16T11:20:00Z",
+    "updated_at": "2024-03-16T11:20:00Z"
+  },
+  {
+    "id": "c9d0e1f2-a3b4-4c5d-f6a7-b8c9d0e1f2a3",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "evaluation_activity_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "course_enrollment_id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+    "student_id": "b8c9d0e1-f2a3-4b4c-e5f6-a7b8c9d0e1f2",
+    "score": 3.8,
+    "observations": "Good effort, needs improvement in presentation",
+    "recorded_by": "c9d0e1f2-a3b4-4c5d-f6a7-b8c9d0e1f2a3",
+    "recorded_at": "2024-03-16T11:25:00Z",
+    "created_at": "2024-03-16T11:25:00Z",
+    "updated_at": "2024-03-16T11:25:00Z"
+  }
+]
+```
+</ResponseExample>
+
+## Score Scale
+
+Scores in Athena ERP use a scale from 0.0 to 5.0, where:
+- **5.0**: Outstanding
+- **4.0-4.9**: Excellent
+- **3.0-3.9**: Good
+- **2.0-2.9**: Acceptable
+- **0.0-1.9**: Needs improvement
+
+## Permissions
+
+- **Create activities**: Requires `write:activities`, `write:grades`, or `write:all` permission
+- **List activities**: Requires `read:grades` or `read:all` permission
+- **Create scores**: Requires `write:grades` or `write:all` permission
+- **List scores**: Requires `read:grades` or `read:all` permission

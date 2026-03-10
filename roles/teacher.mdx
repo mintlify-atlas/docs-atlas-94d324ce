@@ -1,0 +1,645 @@
+---
+title: "Teacher Role"
+description: "Classroom management, grading, attendance, and student engagement"
+icon: "chalkboard-user"
+---
+
+The **Teacher** role is designed for classroom instructors who manage their assigned students, record grades and attendance, and communicate with students and parents. This role has focused permissions limited to classes and students assigned to them.
+
+## Permissions
+
+<CardGroup cols={2}>
+  <Card title="Assigned Students" icon="users">
+    **Permission:** `read:own_students`
+    
+    View profiles and information for students in your assigned classes only.
+  </Card>
+  
+  <Card title="Grade Management" icon="pen-to-square">
+    **Permission:** `write:grades`
+    
+    Enter, modify, and calculate grades for your courses.
+  </Card>
+  
+  <Card title="Attendance Recording" icon="clipboard-check">
+    **Permission:** `write:attendance`
+    
+    Take daily attendance for your classes.
+  </Card>
+  
+  <Card title="View Own Grades" icon="chart-line">
+    **Permission:** `read:own_grades`
+    
+    Access grade books and reports for your courses.
+  </Card>
+  
+  <Card title="Activities & Assignments" icon="list-check">
+    **Permission:** `write:activities`
+    
+    Create evaluation activities, assignments, and assessments.
+  </Card>
+  
+  <Card title="Schedule Access" icon="calendar">
+    **Permission:** `read:schedule`
+    
+    View your teaching schedule and class periods.
+  </Card>
+  
+  <Card title="Communications" icon="message">
+    **Permission:** `read:communications`
+    
+    Receive messages from administration and access school announcements.
+  </Card>
+</CardGroup>
+
+<Note>
+  Teachers can only access data for students in their assigned classes. You cannot view information about students you don't teach.
+</Note>
+
+## Core Workflows
+
+### Taking Attendance
+
+Recording attendance is a daily responsibility:
+
+<Steps>
+  <Step title="Access Your Class">
+    Start of class period:
+    
+    1. Navigate to **Attendance** from main menu
+    2. Select today's date (defaults to current date)
+    3. Choose your class period or course section
+    
+    You'll see a roster of all enrolled students.
+  </Step>
+  
+  <Step title="Mark Attendance">
+    For each student, record:
+    
+    <Tabs>
+      <Tab title="Present">
+        Student is in class - default status, no action needed
+      </Tab>
+      <Tab title="Absent">
+        Student is not present:
+        - Click absent button
+        - Optionally add note (sick, unexcused, etc.)
+      </Tab>
+      <Tab title="Tardy">
+        Student arrived late:
+        - Mark as tardy
+        - Record arrival time if required
+      </Tab>
+      <Tab title="Excused">
+        Authorized absence:
+        - Mark as excused
+        - Note reason (school event, appointment, etc.)
+      </Tab>
+    </Tabs>
+    
+    ```
+    POST /api/academic/attendance
+    Permission: write:attendance
+    ```
+  </Step>
+  
+  <Step title="Save Record">
+    Click **Save Attendance**
+    
+    - Attendance is timestamped
+    - Coordinator and administration can view
+    - Parents may receive absence notifications
+    - Cannot be deleted (only corrected)
+  </Step>
+  
+  <Step title="Make Corrections">
+    If you made a mistake:
+    
+    1. Return to attendance view
+    2. Find the date and class
+    3. Update student status
+    4. Save again (creates audit trail)
+  </Step>
+</Steps>
+
+<Tip>
+  Take attendance within the first 10 minutes of class while students are settling. This ensures accurate records and timely absence notifications.
+</Tip>
+
+### Managing Grades
+
+Grading is your primary academic responsibility:
+
+#### Creating Evaluation Activities
+
+<Steps>
+  <Step title="Plan Your Assessments">
+    For each grading period:
+    
+    1. Navigate to **Grades > [Your Course] > Activities**
+    2. Click **New Activity**
+    3. Define activity details:
+       - Name (e.g., "Quiz 1: Verbs", "Project: Solar System")
+       - Type (quiz, exam, project, homework, participation)
+       - Date assigned and due date
+       - Maximum points or weight
+       - Grading period
+    
+    ```
+    POST /api/academic/activities
+    Permission: write:activities
+    ```
+  </Step>
+  
+  <Step title="Set Weighting">
+    Configure how activities count toward final grade:
+    
+    ```json
+    {
+      "activity_name": "Examen Final",
+      "activity_type": "exam",
+      "max_points": 100,
+      "weight_percentage": 40,
+      "grading_period": "Segundo Bimestre"
+    }
+    ```
+    
+    Example weights:
+    - Quizzes: 20%
+    - Homework: 15%
+    - Projects: 25%
+    - Final Exam: 40%
+  </Step>
+  
+  <Step title="Communicate to Students">
+    Students can see activities in their portal. No additional notification needed unless specified.
+  </Step>
+</Steps>
+
+#### Entering Grades
+
+<Tabs>
+  <Tab title="Individual Entry">
+    For a specific activity:
+    
+    1. Go to **Grades > [Course] > [Activity Name]**
+    2. Enter score for each student
+    3. Add comments if needed
+    4. Mark as graded
+    
+    ```
+    POST /api/academic/activity-scores
+    {
+      "activity_id": "uuid",
+      "student_id": "uuid",
+      "score": 85,
+      "comments": "Good work on analysis section"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Bulk Entry">
+    For whole class at once:
+    
+    1. Use grade grid view
+    2. Enter scores in spreadsheet format
+    3. Tab between cells for quick entry
+    4. Save entire grid at once
+    
+    <Info>
+      Grid view is fastest for quizzes and standardized assessments.
+    </Info>
+  </Tab>
+  
+  <Tab title="Import from File">
+    If you grade offline:
+    
+    1. Download grade template
+    2. Fill in scores in Excel/Sheets
+    3. Upload completed file
+    4. Review and confirm import
+    
+    <Warning>
+      Verify student IDs match before importing to avoid mismatched grades.
+    </Warning>
+  </Tab>
+</Tabs>
+
+#### Calculating Period Grades
+
+<Steps>
+  <Step title="Review Activity Completion">
+    Before finalizing period:
+    
+    1. Check that all activities are graded
+    2. Verify weighting adds up to 100%
+    3. Look for missing scores
+  </Step>
+  
+  <Step title="Calculate Final Grades">
+    The system automatically calculates:
+    
+    - Weighted average of all activities
+    - Conversion to school's grading scale (1.0-5.0)
+    - Performance level (Superior, Alto, Básico, Bajo)
+    
+    Formula:
+    ```
+    Final Grade = Σ(Activity Score × Weight) / Σ(Weights)
+    ```
+  </Step>
+  
+  <Step title="Review & Adjust">
+    Check calculated grades:
+    
+    1. Look for anomalies
+    2. Verify passing/failing students
+    3. Make manual adjustments if needed (with notes)
+    4. Finalize grades
+  </Step>
+  
+  <Step title="Submit Grades">
+    Once satisfied:
+    
+    1. Click **Submit Period Grades**
+    2. Confirm submission
+    3. Grades are locked and visible to:
+       - Students
+       - Parents/guardians
+       - Coordinators
+       - Rector
+    
+    <Note>
+      After submission, grade changes require coordinator or rector approval.
+    </Note>
+  </Step>
+</Steps>
+
+### Creating Assignments & Activities
+
+Beyond graded work, manage classroom activities:
+
+<AccordionGroup>
+  <Accordion title="Homework Assignments">
+    Create homework tasks:
+    
+    1. **Grades > Activities > New**
+    2. Select type: "Homework"
+    3. Add description and instructions
+    4. Set due date
+    5. Attach resources (PDF, links)
+    6. Configure submission requirements
+    
+    Students see assignments in their portal and can submit work digitally.
+  </Accordion>
+  
+  <Accordion title="Projects">
+    Long-term assignments:
+    
+    1. Create project activity
+    2. Break into milestones (optional):
+       - Proposal due: Week 1
+       - Draft due: Week 3
+       - Final due: Week 6
+    3. Set partial grading if using milestones
+    4. Provide rubric or grading criteria
+  </Accordion>
+  
+  <Accordion title="Participation Tracking">
+    Track class participation:
+    
+    1. Create "Participation" activity
+    2. Set as ongoing throughout period
+    3. Award points based on:
+       - Class discussion
+       - Group work contribution
+       - Engagement
+    4. Update scores weekly
+  </Accordion>
+</AccordionGroup>
+
+## Communication
+
+### Reading Announcements
+
+Stay informed about school updates:
+
+<Steps>
+  <Step title="Check Dashboard">
+    Your homepage shows:
+    - Recent circulars from administration
+    - Important announcements
+    - Upcoming school events
+  </Step>
+  
+  <Step title="Access Full Communications">
+    Go to **Communications > Announcements** for:
+    - All circulars
+    - Staff meetings notices
+    - Policy updates
+    - Event schedules
+  </Step>
+</Steps>
+
+### Reporting Student Concerns
+
+When you need to escalate issues:
+
+<Accordion title="Behavioral Issues">
+  Report to coordinator:
+  
+  1. Document the incident immediately
+  2. Note:
+     - Date, time, location
+     - What happened
+     - Who was involved
+     - Witnesses
+  3. Contact coordinator via:
+     - In-person conversation (urgent)
+     - System message
+     - Email
+  
+  The coordinator will create an official discipline case.
+</Accordion>
+
+<Accordion title="Academic Concerns">
+  For struggling students:
+  
+  1. Track performance over time
+  2. Identify specific challenges
+  3. Contact coordinator to:
+     - Request intervention
+     - Schedule parent meeting
+     - Arrange tutoring
+  4. Document efforts made
+</Accordion>
+
+<Accordion title="Attendance Patterns">
+  Report chronic absenteeism:
+  
+  1. Note pattern (e.g., "Absent every Monday")
+  2. Contact coordinator
+  3. Coordinator will contact parents
+  4. Continue documenting attendance
+</Accordion>
+
+<Note>
+  While you can report concerns to coordinators, you cannot directly message parents in the system. Parent communication is handled by coordinators and administration.
+</Note>
+
+## Viewing Your Schedule
+
+Access your teaching schedule:
+
+<Tabs>
+  <Tab title="Weekly View">
+    See your full week:
+    
+    1. Navigate to **Schedule**
+    2. View grid showing:
+       - Class periods
+       - Courses assigned
+       - Room numbers
+       - Student count per section
+  </Tab>
+  
+  <Tab title="Daily View">
+    Today's classes:
+    
+    - Shows current and upcoming classes
+    - Quick links to take attendance
+    - Access to grade books
+    - View class rosters
+  </Tab>
+  
+  <Tab title="Course List">
+    All your course assignments:
+    
+    - Subject name
+    - Grade level
+    - Section/group
+    - Meeting times
+    - Total students
+  </Tab>
+</Tabs>
+
+## Reports You Can Generate
+
+<CardGroup cols={2}>
+  <Card title="Grade Book" icon="book">
+    Complete grade records:
+    - All students in course
+    - All activities and scores
+    - Calculated averages
+    - Export to Excel
+  </Card>
+  
+  <Card title="Attendance Summary" icon="calendar-check">
+    Track attendance:
+    - By student
+    - By date range
+    - Absence totals
+    - Tardy counts
+  </Card>
+  
+  <Card title="Class Roster" icon="users">
+    Student lists:
+    - Current enrollment
+    - Contact information
+    - Photos (if available)
+  </Card>
+  
+  <Card title="Performance Summary" icon="chart-bar">
+    Academic overview:
+    - Grade distribution
+    - Passing/failing count
+    - Average by activity
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Grade Regularly">
+    Don't let grading pile up:
+    
+    - Enter scores within 1 week of assessment
+    - Grade smaller assignments immediately
+    - Set aside dedicated grading time weekly
+    - Use rubrics to speed grading
+    - Provide feedback while work is fresh
+    
+    Students and parents expect timely grade updates.
+  </Accordion>
+  
+  <Accordion title="Take Accurate Attendance">
+    Attendance affects:
+    
+    - Academic standing
+    - Legal compliance
+    - Parent notifications
+    - Student records
+    
+    **Tips:**
+    - Take attendance at start of every class
+    - Correct mistakes immediately
+    - Don't mark present for favors
+    - Document excused absences properly
+  </Accordion>
+  
+  <Accordion title="Communicate Grade Expectations">
+    Be transparent with students:
+    
+    - Share grading scale and weights at start of term
+    - Post rubrics for major assignments
+    - Explain how participation is graded
+    - Clarify late work policy
+    - Show how to calculate their grade
+  </Accordion>
+  
+  <Accordion title="Maintain Academic Integrity">
+    Ensure fair grading:
+    
+    - Apply rubrics consistently
+    - Grade blind when possible
+    - Document grade adjustments
+    - Never change grades without valid reason
+    - Report suspected cheating to coordinator
+  </Accordion>
+  
+  <Accordion title="Protect Student Privacy">
+    Handle data responsibly:
+    
+    - Don't share student grades publicly
+    - Log out when leaving computer
+    - Don't access students you don't teach
+    - Keep grade books secure
+    - Follow school privacy policies
+  </Accordion>
+</AccordionGroup>
+
+## Common Questions
+
+<AccordionGroup>
+  <Accordion title="Can I change a grade after submitting period grades?">
+    Yes, but it requires approval:
+    
+    1. Contact your coordinator or rector
+    2. Explain the reason for the change
+    3. They will unlock the grade
+    4. You can make the correction
+    5. Change is logged in audit trail
+    
+    Valid reasons include:
+    - Calculation error
+    - Recording mistake
+    - Late work accepted per policy
+    - Grading error discovered
+  </Accordion>
+  
+  <Accordion title="What if a student disputes their grade?">
+    Follow this process:
+    
+    1. Review the grade calculation with student
+    2. Show activity scores and weights
+    3. Check for any recording errors
+    4. If error found, correct it
+    5. If no error, explain calculation
+    6. If student still disputes, refer to coordinator
+    
+    Document all conversations about disputed grades.
+  </Accordion>
+  
+  <Accordion title="Can I message parents directly?">
+    No, parent communication is handled by:
+    
+    - Coordinators
+    - Rector
+    - Secretaries
+    
+    If you need to contact a parent:
+    1. Report concern to coordinator
+    2. Request parent meeting
+    3. Coordinator will arrange and attend
+    
+    This ensures consistent communication and proper documentation.
+  </Accordion>
+  
+  <Accordion title="How do I handle missing assignments?">
+    For students who don't submit work:
+    
+    1. Record zero or no grade (per school policy)
+    2. Note "Not submitted" in comments
+    3. If pattern develops, report to coordinator
+    4. Follow school policy on late work
+    
+    Coordinator may need to contact parents for chronic missing work.
+  </Accordion>
+</AccordionGroup>
+
+## What You Cannot Do
+
+<Warning>
+  **Cannot access other teachers' students** - You can only view students in your assigned classes.
+</Warning>
+
+<Warning>
+  **Cannot modify attendance for other classes** - Only record attendance for your own courses.
+</Warning>
+
+<Warning>
+  **Cannot create new students** - Enrollment is handled by secretaries and administration.
+</Warning>
+
+<Warning>
+  **Cannot send system messages** - Communication permissions are read-only for teachers.
+</Warning>
+
+<Warning>
+  **Cannot export SIMAT** - Official reporting is done by coordinators and secretaries.
+</Warning>
+
+## Daily & Weekly Tasks
+
+### Daily Checklist
+
+<CheckList>
+  <Check>Take attendance for all classes</Check>
+  <Check>Check announcements from administration</Check>
+  <Check>Review schedule for day</Check>
+  <Check>Enter grades for recently assessed work</Check>
+</CheckList>
+
+### Weekly Checklist
+
+<CheckList>
+  <Check>Grade all pending assignments</Check>
+  <Check>Update activity scores</Check>
+  <Check>Review student performance trends</Check>
+  <Check>Plan next week's activities</Check>
+  <Check>Report any student concerns to coordinator</Check>
+</CheckList>
+
+### End of Period Checklist
+
+<CheckList>
+  <Check>Ensure all activities are created and graded</Check>
+  <Check>Verify grade calculations</Check>
+  <Check>Review failing students</Check>
+  <Check>Finalize and submit period grades</Check>
+  <Check>Plan recovery activities if needed</Check>
+</CheckList>
+
+## Related Roles
+
+<CardGroup cols={2}>
+  <Card title="Coordinator" icon="users-gear" href="/roles/coordinator">
+    Report student concerns and receive oversight
+  </Card>
+  <Card title="Rector" icon="user-tie" href="/roles/rector">
+    Escalate grade disputes and policy questions
+  </Card>
+  <Card title="Student" icon="user-graduate" href="/roles/student">
+    Understand what your students can see
+  </Card>
+</CardGroup>

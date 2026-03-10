@@ -1,0 +1,434 @@
+---
+title: Railway Deployment
+description: Deploying Athena ERP backend to Railway.app
+---
+
+## Overview
+
+Athena ERP deploys its FastAPI backend to [Railway.app](https://railway.app), a modern platform-as-a-service (PaaS) that provides:
+
+- Automatic deployments from Git
+- Container orchestration
+- Environment variable management
+- Built-in monitoring and logging
+- Zero-downtime deployments
+
+## Project Structure
+
+The backend is located in the `athena-api/` directory:
+
+```
+athena-api/
+├── app/
+│   ├── main.py           # FastAPI application entry point
+│   ├── config.py         # Environment configuration
+│   ├── database.py       # Database connection
+│   ├── routers/          # API route handlers
+│   ├── models/           # SQLAlchemy models
+│   └── auth/             # Authentication logic
+├── Dockerfile            # Container definition
+├── pyproject.toml        # Python dependencies
+└── alembic/              # Database migrations
+```
+
+## Dockerfile Configuration
+
+Railway uses Docker to containerize the application:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies for asyncpg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e .
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Key Dockerfile Features
+
+- **Base Image**: `python:3.12-slim` for minimal size
+- **System Dependencies**: `libpq-dev` and `gcc` required for `asyncpg`
+- **Port**: Exposes port 8000 for HTTP traffic
+- **Production Server**: Uses Uvicorn with multiple workers
+
+## Deployment Configuration
+
+### Environment Variables
+
+Configure these variables in Railway's dashboard:
+
+#### Required Variables
+
+```bash
+# Environment
+ENVIRONMENT=production
+
+# Database - Use Supabase connection string
+DATABASE_URL=postgresql+asyncpg://postgres:[password]@db.[project].supabase.co:5432/postgres
+
+# JWT - Must match Supabase JWT Secret
+JWT_SECRET=your-supabase-jwt-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Supabase
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# CORS - Add your frontend domain
+CORS_ORIGINS=https://your-frontend.vercel.app,https://athena.yourdomain.com
+```
+
+#### Optional Variables
+
+```bash
+# Cloudflare R2 (Phase 2)
+R2_ENDPOINT_URL=https://xxxx.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=your-r2-key
+R2_SECRET_ACCESS_KEY=your-r2-secret
+R2_BUCKET_NAME=athena-docs
+
+# Monitoring
+SENTRY_DSN=your-sentry-dsn
+```
+
+<Warning>
+Never commit sensitive credentials to Git. Always use Railway's environment variable management.
+</Warning>
+
+### Railway Configuration File
+
+While Railway auto-detects Dockerfiles, you can add `railway.toml` for advanced configuration:
+
+```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[healthcheck]
+path = "/health"
+interval = 30
+timeout = 5
+```
+
+## Health Check Endpoint
+
+Railway monitors application health via the `/health` endpoint:
+
+```python
+# app/main.py
+@app.get("/health", tags=["health"], include_in_schema=False)
+async def health_check():
+    """Railway uses this endpoint to verify service is alive."""
+    return {"status": "ok", "version": "0.1.0"}
+```
+
+<Info>
+Railway automatically restarts the service if health checks fail consecutively.
+</Info>
+
+## Deployment Process
+
+### 1. Connect Repository
+
+1. Link your GitHub repository to Railway
+2. Select the `athena-api` directory as the root
+3. Railway auto-detects the Dockerfile
+
+### 2. Configure Environment
+
+1. Navigate to Variables tab
+2. Add all required environment variables
+3. Use Railway's database plugin or external Supabase connection
+
+### 3. Deploy
+
+Railway automatically deploys on:
+- Initial setup
+- Git push to main branch
+- Manual trigger via dashboard
+
+```bash
+# Trigger deployment
+git push origin main
+```
+
+### 4. Run Migrations
+
+After deployment, run database migrations:
+
+```bash
+# Via Railway CLI
+railway run alembic upgrade head
+
+# Or connect to deployment and run
+railway shell
+alembic upgrade head
+```
+
+## Scaling Configuration
+
+### Uvicorn Workers
+
+For production, run multiple Uvicorn workers:
+
+```dockerfile
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+```
+
+Or use Gunicorn with Uvicorn workers:
+
+```bash
+gunicorn app.main:app \
+  --workers 4 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000 \
+  --timeout 60
+```
+
+### Horizontal Scaling
+
+Railway supports horizontal scaling:
+- Scale replicas via dashboard
+- Automatic load balancing
+- Session persistence not required (stateless API)
+
+## Database Connection Pooling
+
+Optimize database connections for production:
+
+```python
+# app/database.py
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,              # Disable SQL logging in production
+    pool_pre_ping=True,      # Verify connections before use
+    pool_size=10,            # Base connection pool size
+    max_overflow=20,         # Additional connections under load
+    pool_timeout=30,         # Wait time for available connection
+    pool_recycle=3600,       # Recycle connections after 1 hour
+)
+```
+
+<Note>
+Adjust `pool_size` based on Railway's plan and Supabase connection limits.
+</Note>
+
+## Monitoring and Logging
+
+### Railway Logs
+
+Access real-time logs via:
+- Railway Dashboard → Deployments → Logs
+- Railway CLI: `railway logs`
+
+```bash
+# Stream live logs
+railway logs --follow
+
+# Filter by level
+railway logs --level error
+```
+
+### Structured Logging
+
+Implement structured logging for better observability:
+
+```python
+import logging
+import json
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps({
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+        })
+
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+logger = logging.getLogger()
+logger.addHandler(handler)
+```
+
+### Sentry Integration
+
+Monitor errors with Sentry:
+
+```python
+# app/main.py
+import sentry_sdk
+from app.config import settings
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        traces_sample_rate=0.1,
+    )
+```
+
+## Performance Optimization
+
+### Docker Build Caching
+
+Optimize build times by leveraging layer caching:
+
+```dockerfile
+# Copy dependencies first for better caching
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e .
+
+# Copy application code last (changes frequently)
+COPY . .
+```
+
+### Database Query Optimization
+
+- Use eager loading for related objects: `selectinload()`
+- Index frequently queried columns
+- Implement query result caching for expensive operations
+- Monitor slow queries via Supabase dashboard
+
+### CORS Configuration
+
+Restrict CORS to specific origins in production:
+
+```python
+# app/main.py
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,  # Specific domains only
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## Security Best Practices
+
+### Environment Separation
+
+Maintain separate Railway projects for:
+- **Development**: Testing and staging
+- **Production**: Live user traffic
+
+### API Documentation
+
+Disable Swagger UI in production:
+
+```python
+# app/main.py
+app = FastAPI(
+    title="Athena ERP API",
+    docs_url="/docs" if settings.is_dev else None,    # Only in dev
+    redoc_url="/redoc" if settings.is_dev else None,
+    openapi_url="/openapi.json",
+)
+```
+
+### Rate Limiting
+
+Implement rate limiting to prevent abuse:
+
+```python
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
+
+@app.get("/api/endpoint")
+@limiter.limit("100/minute")
+async def endpoint(request: Request):
+    pass
+```
+
+## CI/CD Pipeline
+
+Railway integrates with GitHub for automated deployments:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'athena-api/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run tests
+        run: |
+          cd athena-api
+          pip install -e ".[dev]"
+          pytest
+      
+      - name: Deploy to Railway
+        run: |
+          # Railway auto-deploys on push
+          echo "Deployment triggered"
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+**Problem**: Database connection timeouts
+
+**Solution**:
+- Verify `DATABASE_URL` format and credentials
+- Check Supabase connection limits
+- Reduce `pool_size` if hitting connection limits
+
+### Memory Issues
+
+**Problem**: Container out of memory (OOM)
+
+**Solution**:
+- Upgrade Railway plan for more memory
+- Reduce worker count
+- Optimize query memory usage
+- Implement pagination for large result sets
+
+### Build Failures
+
+**Problem**: Docker build fails
+
+**Solution**:
+- Check Dockerfile syntax
+- Verify all dependencies in `pyproject.toml`
+- Review Railway build logs for errors
+
+## Related Documentation
+
+- [Supabase Integration](/architecture/infrastructure/supabase)
+- [Cloudflare R2 Storage](/architecture/infrastructure/cloudflare-r2)
+- [Environment Variables](/deployment/environment-variables)
+- [Backend Deployment](/deployment/backend)

@@ -1,0 +1,363 @@
+---
+title: Academic Management
+description: Manage curriculum, classes, grades, attendance, and teacher assignments
+icon: book-open
+---
+
+The academic management module provides comprehensive tools for organizing your school's curriculum, managing class groups, assigning teachers, recording grades, and tracking student attendance.
+
+## Overview
+
+Athena ERP's academic system is built around these core concepts:
+
+- **Academic Areas** - Broad subject categories (STEM, Humanities, Arts, etc.)
+- **Subject Catalog** - Individual subjects/courses taught at your school
+- **Study Plans** - Grade-level curriculum defining required subjects
+- **Class Groups** - Physical classes/sections (e.g., "6th Grade A")
+- **Course Offerings** - Subjects taught to specific class groups
+- **Teacher Assignments** - Teachers assigned to course offerings
+- **Evaluation Activities** - Assessments, assignments, and projects
+- **Grades & Attendance** - Student performance and attendance tracking
+
+<Info>
+The academic structure is flexible to accommodate different educational models and grading systems.
+</Info>
+
+## Setting Up Academic Structure
+
+### 1. Academic Areas
+
+Areas organize subjects into logical categories:
+
+**Common academic areas:**
+- Mathematics and Science (STEM)
+- Language Arts
+- Social Studies
+- Arts and Music
+- Physical Education
+- Technical/Vocational
+
+**To create an area:**
+1. Navigate to **Academic** → **Areas**
+2. Click **Create Area**
+3. Enter name and optional description
+4. Click **Save**
+
+### 2. Subject Catalog
+
+Define all subjects taught at your school:
+
+**To create a subject:**
+1. Navigate to **Academic** → **Subjects**
+2. Click **Create Subject**
+3. Enter:
+   - Subject name
+   - Academic area
+   - Optional description
+   - Subject code (if applicable)
+4. Click **Save**
+
+**Example subjects:**
+- Mathematics
+- Spanish Language
+- English
+- Biology
+- World History
+- Physical Education
+
+<Tip>
+Create subjects once in the catalog, then reuse them across grade levels and school years.
+</Tip>
+
+### 3. Study Plans
+
+Study plans define the curriculum for each grade level:
+
+**To create a study plan:**
+1. Navigate to **Academic** → **Study Plans**
+2. Click **Create Study Plan**
+3. Select:
+   - School year
+   - Grade level
+   - Subject list (from catalog)
+   - Hours per week per subject
+   - Evaluation criteria
+4. Click **Save**
+
+Study plans guide course offering creation and ensure curriculum compliance.
+
+### 4. Class Groups
+
+Class groups are the physical sections students are assigned to:
+
+**To create a class group:**
+1. Navigate to **Academic** → **Class Groups**
+2. Click **Create Class Group**
+3. Enter:
+   - School year
+   - Grade level (e.g., "6th")
+   - Group code (e.g., "A", "B", "1", "2")
+   - Shift (morning, afternoon, full day)
+   - Homeroom teacher (optional)
+4. Click **Save**
+
+**Example class groups:**
+- 6th Grade A (Morning)
+- 6th Grade B (Morning)
+- 11th Grade 1 (Full Day)
+
+## Managing Course Offerings
+
+Course offerings connect subjects to class groups for a specific school year.
+
+### Creating Course Offerings
+
+1. Navigate to **Academic** → **Course Offerings**
+2. Click **Create Offering**
+3. Select:
+   - School year
+   - Class group
+   - Subject from catalog
+4. Set status (active, planned, cancelled)
+5. Click **Save**
+
+**Example:**
+- Subject: "Mathematics"
+- Class group: "6th Grade A"
+- School year: "2024-2025"
+- Status: "active"
+
+This creates a course offering that teachers can be assigned to and where students can be enrolled.
+
+### Viewing Course Offerings
+
+Filter course offerings by:
+- School year
+- Teacher (to see a teacher's schedule)
+- Grade level
+- Subject
+
+<CardGroup cols={2}>
+  <Card title="By Teacher" icon="chalkboard-user">
+    View all courses a specific teacher is currently teaching. Useful for workload management and schedule planning.
+  </Card>
+  
+  <Card title="By Class Group" icon="users-line">
+    See all subjects offered to a specific class. Ensures study plan compliance and complete curriculum coverage.
+  </Card>
+</CardGroup>
+
+## Teacher Assignments
+
+Assign teachers to course offerings and track assignment history.
+
+### Creating Assignments
+
+1. Navigate to **Academic** → **Teacher Assignments**
+2. Click **Assign Teacher**
+3. Select:
+   - Course offering
+   - Teacher (from staff list)
+   - Start date
+   - Reason for assignment (if replacing another teacher)
+4. Click **Save**
+
+**System behavior:**
+- If a teacher is already assigned to the course, their assignment is ended automatically
+- The new assignment becomes active
+- Complete history of assignments is preserved
+
+### Assignment History
+
+View historical assignments to:
+- Track teacher changes mid-year
+- Understand workload distribution
+- Audit who taught which courses
+
+Each assignment records:
+- Teacher assigned
+- Start and end dates
+- Reason for change
+- Who created the assignment
+
+## Staff Management
+
+The staff list shows all active teachers and administrators:
+
+**View available staff:**
+1. Navigate to **Academic** → **Staff**
+2. See all active school members with their:
+   - Full name
+   - Email
+   - Roles/permissions
+
+Use this list when assigning teachers to course offerings.
+
+## Evaluation and Grading
+
+### Creating Evaluation Activities
+
+Activities are assessments, projects, or assignments:
+
+1. Navigate to **Academic** → **Activities**
+2. Click **Create Activity**
+3. Enter:
+   - Course offering
+   - Teacher assignment
+   - Activity title
+   - Description
+   - Maximum score
+   - Weight/percentage
+   - Due date
+   - Activity type (quiz, exam, project, homework, etc.)
+4. Optionally attach files or resources
+5. Click **Save**
+
+**Activity types:**
+- Quizzes and exams
+- Projects and presentations
+- Homework assignments
+- Lab work
+- Participation
+
+### Recording Grades
+
+1. Navigate to the activity
+2. Click **Enter Scores**
+3. For each student:
+   - Enter numeric score
+   - Add optional comments
+   - Mark as submitted/late/missing
+4. Click **Save Scores**
+
+**Grading features:**
+- Bulk score entry
+- Late submission tracking
+- Score history and revisions
+- Comments for student feedback
+
+<Tip>
+Grades are linked to teacher assignments, creating an audit trail of who entered each score.
+</Tip>
+
+### Viewing Student Grades
+
+Filter scores by:
+- Evaluation activity (to see all student scores for one assessment)
+- Student (to see all grades for one student)
+- Course offering (to see all grades in a course)
+
+## Attendance Tracking
+
+Record student attendance for course offerings:
+
+### Marking Attendance
+
+1. Navigate to **Academic** → **Attendance**
+2. Select course offering and date
+3. For each enrolled student, mark:
+   - Present
+   - Absent (excused/unexcused)
+   - Late
+   - Left early
+4. Add optional notes
+5. Click **Save**
+
+**Attendance records include:**
+- Student
+- Course offering
+- Date
+- Status
+- Minutes absent (if partial)
+- Notes
+
+### Viewing Attendance
+
+Query attendance by:
+- Student (to see attendance history)
+- Course offering (to see class attendance patterns)
+- Date range
+
+<Note>
+Attendance tracking helps identify at-risk students and supports intervention programs.
+</Note>
+
+## Workflows and Use Cases
+
+<Steps>
+  <Step title="Beginning of School Year">
+    1. Create class groups for all grade levels
+    2. Create course offerings based on study plans
+    3. Assign teachers to course offerings
+    4. Verify students are enrolled in correct class groups
+  </Step>
+  
+  <Step title="During School Year">
+    1. Teachers create evaluation activities
+    2. Record grades as assessments are completed
+    3. Mark daily attendance
+    4. Update teacher assignments if changes occur
+  </Step>
+  
+  <Step title="End of Grading Period">
+    1. Verify all grades are entered
+    2. Calculate period averages
+    3. Generate report cards
+    4. Review attendance summaries
+  </Step>
+  
+  <Step title="Teacher Changes">
+    1. Create new teacher assignment with start date
+    2. System automatically ends previous assignment
+    3. Note reason for change in assignment record
+    4. New teacher inherits existing activities and grades
+  </Step>
+</Steps>
+
+## Permissions
+
+| Action | Required Permission |
+|--------|--------------------|
+| View academic structure | `read:all` or `read:grades` or `read:schedule` |
+| Manage areas/subjects | `write:all` |
+| Manage class groups | `write:all` |
+| Manage course offerings | `write:all` |
+| Assign teachers | `write:all` |
+| Create activities | `write:activities` or `write:grades` or `write:all` |
+| Enter grades | `write:grades` or `write:all` |
+| Mark attendance | `write:attendance` or `write:all` |
+| View grades | `read:grades` or `read:all` |
+| View attendance | `read:attendance` or `read:all` |
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Curriculum Planning" icon="sitemap">
+    Set up academic areas, subjects, and study plans before the school year begins. This ensures consistency and completeness.
+  </Card>
+  
+  <Card title="Clear Naming" icon="tag">
+    Use consistent naming conventions for class groups (e.g., "6A", "6B") and subjects. This improves navigation and reporting.
+  </Card>
+  
+  <Card title="Regular Updates" icon="clock">
+    Record attendance and grades regularly. Don't wait until end of period to catch up.
+  </Card>
+  
+  <Card title="Activity Documentation" icon="file-lines">
+    Provide clear activity descriptions and rubrics. This helps students understand expectations and supports grading consistency.
+  </Card>
+</CardGroup>
+
+## Integration with Other Features
+
+- **Enrollments** - Students must be enrolled to appear in class rosters
+- **Students** - Academic records link to student profiles
+- **Communications** - Send circulars to specific class groups or teachers
+- **Reports** - Generate grade reports, attendance summaries, and transcripts
+
+## Related Features
+
+- [Enrollment Management](/features/enrollment) - Enroll students in class groups
+- [Student Management](/features/students) - View student academic profiles
+- [School Years](/admin/school-years) - Set up school years and grading periods

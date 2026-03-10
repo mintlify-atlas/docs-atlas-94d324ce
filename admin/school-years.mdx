@@ -1,0 +1,462 @@
+---
+title: School Years & Periods
+description: Configure academic calendar structure for Colombian schools
+icon: calendar
+---
+
+## Overview
+
+School years and academic periods form the temporal structure for all academic activities in Athena ERP. This module allows administrators to define the academic calendar that governs enrollments, grading, and reporting.
+
+<Info>
+  **Permissions required**: 
+  - View: `read:all`, `read:grades`, or `read:schedule`
+  - Create/Edit: `config:institution` or `write:all`
+</Info>
+
+## School Years
+
+A school year represents a full academic cycle, typically aligned with Colombia's calendar system.
+
+### School Year Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique identifier |
+| `school_id` | UUID | Associated school (tenant) |
+| `name` | String | Year label (e.g., "2024", "2024-2025") |
+| `starts_on` | Date | Academic year start date |
+| `ends_on` | Date | Academic year end date |
+| `status` | String | Current status of the year |
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:46`
+
+### Status Values
+
+<CardGroup cols={2}>
+  <Card title="Planning" icon="clipboard-list">
+    Year is being configured, not yet active
+  </Card>
+  <Card title="Active" icon="circle-check">
+    Current academic year in progress
+  </Card>
+  <Card title="Closed" icon="circle-xmark">
+    Year completed, no new activities
+  </Card>
+  <Card title="Archived" icon="box-archive">
+    Historical record, read-only access
+  </Card>
+</CardGroup>
+
+### Database Constraints
+
+The system enforces data integrity:
+
+```sql
+CHECK (status IN ('planning', 'active', 'closed', 'archived'))
+CHECK (ends_on >= starts_on)
+```
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:48`
+
+## Viewing School Years
+
+School years are listed in reverse chronological order (newest first).
+
+<Steps>
+  <Step title="Access School Years">
+    Navigate to the school configuration section or use the API:
+    
+    ```python
+    GET /schools/years
+    ```
+    
+    Returns all school years for the current tenant, ordered by start date descending.
+  </Step>
+  
+  <Step title="Review Year Information">
+    Each year displays:
+    - Name and date range
+    - Current status
+    - Associated academic periods
+    - Creation and update timestamps
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:135`
+
+## Creating a School Year
+
+Set up the academic calendar structure for a new year.
+
+<Steps>
+  <Step title="Determine Calendar Type">
+    Colombia uses two main academic calendars:
+    
+    **Calendar A** (Traditional)
+    - Starts: February
+    - Ends: November/December
+    - Common in most public schools
+    
+    **Calendar B** (International)
+    - Starts: August/September
+    - Ends: June/July
+    - Common in private and bilingual schools
+  </Step>
+  
+  <Step title="Define Year Parameters">
+    Prepare the year configuration:
+    
+    ```python
+    POST /schools/years
+    {
+      "name": "2024",
+      "starts_on": "2024-02-05",
+      "ends_on": "2024-11-30",
+      "status": "planning"
+    }
+    ```
+    
+    The `school_id` is automatically set based on the authenticated user's context.
+  </Step>
+  
+  <Step title="Verify Creation">
+    The system returns the complete school year record:
+    
+    ```json
+    {
+      "id": "uuid-here",
+      "school_id": "tenant-uuid",
+      "name": "2024",
+      "starts_on": "2024-02-05",
+      "ends_on": "2024-11-30",
+      "status": "planning",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+    ```
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:149`
+
+## Academic Periods
+
+Academic periods divide the school year into evaluation segments (terms, quarters, bimesters).
+
+### Period Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique identifier |
+| `school_id` | UUID | Associated school |
+| `school_year_id` | UUID | Parent school year |
+| `number` | Integer | Sequential period number (1, 2, 3...) |
+| `name` | String | Period label |
+| `starts_on` | Date | Period start date |
+| `ends_on` | Date | Period end date |
+| `status` | String | Current status |
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:63`
+
+### Period Status Values
+
+<CardGroup cols={2}>
+  <Card title="Draft" icon="pencil">
+    Period configured but not yet started
+  </Card>
+  <Card title="Open" icon="folder-open">
+    Period active, grades can be entered
+  </Card>
+  <Card title="Closed" icon="folder-closed">
+    Period ended, no new grade entries
+  </Card>
+  <Card title="Published" icon="file-check">
+    Final grades published to students/guardians
+  </Card>
+</CardGroup>
+
+### Database Constraints
+
+```sql
+CHECK (number >= 1)
+CHECK (status IN ('draft', 'open', 'closed', 'published'))
+CHECK (ends_on >= starts_on)
+```
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:65`
+
+## Colombian Period Systems
+
+Schools in Colombia typically use one of these evaluation structures:
+
+### Four Periods (Quarterly)
+
+Most common system, compliant with Decree 1290:
+
+```python
+Period 1: February - April
+Period 2: April - June  
+Period 3: July - September
+Period 4: September - November
+```
+
+### Three Periods (Trimester)
+
+Used by some institutions:
+
+```python
+Period 1: February - May
+Period 2: May - August
+Period 3: August - November
+```
+
+### Two Periods (Semester)
+
+Less common, mainly in technical schools:
+
+```python
+Period 1: February - June
+Period 2: July - November
+```
+
+<Note>
+  Athena ERP supports any number of periods. The `number` field should be sequential (1, 2, 3, 4) for proper ordering.
+</Note>
+
+## Viewing Academic Periods
+
+Periods can be filtered by school year.
+
+<Steps>
+  <Step title="List All Periods">
+    ```python
+    GET /schools/periods
+    ```
+    
+    Returns all periods for the current school, ordered by period number.
+  </Step>
+  
+  <Step title="Filter by School Year">
+    ```python
+    GET /schools/periods?school_year_id={year_uuid}
+    ```
+    
+    Returns only periods belonging to the specified year.
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:163`
+
+## Creating Academic Periods
+
+Periods must be created after the school year exists.
+
+<Steps>
+  <Step title="Identify School Year">
+    Get the UUID of the school year these periods belong to.
+  </Step>
+  
+  <Step title="Plan Period Distribution">
+    Divide the school year into equal or weighted periods. Ensure dates don't overlap and cover the full year.
+  </Step>
+  
+  <Step title="Create Each Period">
+    Create periods sequentially:
+    
+    ```python
+    POST /schools/periods
+    {
+      "school_year_id": "year-uuid-here",
+      "number": 1,
+      "name": "Primer Período",
+      "starts_on": "2024-02-05",
+      "ends_on": "2024-04-15",
+      "status": "draft"
+    }
+    ```
+    
+    Repeat for each period, incrementing the `number` field.
+  </Step>
+  
+  <Step title="Verify Complete Structure">
+    Ensure all periods are created and dates align properly:
+    - No gaps between periods
+    - No overlapping dates
+    - Sequential numbering
+    - Periods span the entire school year
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:177`
+
+## Academic Calendar Workflow
+
+Typical lifecycle for managing the academic calendar:
+
+<Steps>
+  <Step title="Pre-Planning (3-6 months before)">
+    - Create next school year with `planning` status
+    - Define period structure
+    - Create all periods with `draft` status
+    - Configure grade scales and evaluation criteria
+  </Step>
+  
+  <Step title="Year Start">
+    - Update school year status to `active`
+    - Open Period 1 (change status to `open`)
+    - Begin enrollment process
+    - Assign teachers to subjects
+  </Step>
+  
+  <Step title="Period Transitions">
+    - Close current period (status → `closed`)
+    - Finalize grades and evaluations
+    - Publish period results (status → `published`)
+    - Open next period (status → `open`)
+  </Step>
+  
+  <Step title="Year End">
+    - Close final period
+    - Publish final grades
+    - Update school year to `closed`
+    - Generate annual reports
+    - Archive year data (status → `archived`)
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Period Duration">
+    Each period should be approximately equal in duration (8-10 weeks for quarterly system). This ensures balanced evaluation throughout the year.
+  </Accordion>
+  
+  <Accordion title="Buffer Days">
+    Include 1-2 buffer days between periods for grade processing and system updates. This prevents overlap and allows administrative tasks.
+  </Accordion>
+  
+  <Accordion title="Vacation Periods">
+    Colombian schools have scheduled vacation breaks:
+    - Mid-year recess (June/July): 2 weeks
+    - End-of-year break (December-January): 6-8 weeks
+    
+    Plan periods around these breaks.
+  </Accordion>
+  
+  <Accordion title="Status Progression">
+    Follow the natural status progression:
+    - Years: `planning` → `active` → `closed` → `archived`
+    - Periods: `draft` → `open` → `closed` → `published`
+    
+    Don't skip statuses as they may be used for business logic.
+  </Accordion>
+  
+  <Accordion title="Historical Data">
+    Never delete school years or periods. Use the `archived` status to preserve historical data for:
+    - Student transcripts
+    - Statistical reports
+    - Compliance audits
+    - Alumni records
+  </Accordion>
+</AccordionGroup>
+
+## Example: Complete Year Setup
+
+Here's a complete example creating a 2024 school year with four periods:
+
+```python
+# 1. Create the school year
+POST /schools/years
+{
+  "name": "2024",
+  "starts_on": "2024-02-05",
+  "ends_on": "2024-11-29",
+  "status": "planning"
+}
+# Returns: { "id": "year-uuid", ... }
+
+# 2. Create Period 1
+POST /schools/periods
+{
+  "school_year_id": "year-uuid",
+  "number": 1,
+  "name": "Primer Período",
+  "starts_on": "2024-02-05",
+  "ends_on": "2024-04-12",
+  "status": "draft"
+}
+
+# 3. Create Period 2
+POST /schools/periods
+{
+  "school_year_id": "year-uuid",
+  "number": 2,
+  "name": "Segundo Período",
+  "starts_on": "2024-04-15",
+  "ends_on": "2024-06-14",
+  "status": "draft"
+}
+
+# 4. Create Period 3
+POST /schools/periods
+{
+  "school_year_id": "year-uuid",
+  "number": 3,
+  "name": "Tercer Período",
+  "starts_on": "2024-07-15",
+  "ends_on": "2024-09-20",
+  "status": "draft"
+}
+
+# 5. Create Period 4
+POST /schools/periods
+{
+  "school_year_id": "year-uuid",
+  "number": 4,
+  "name": "Cuarto Período",
+  "starts_on": "2024-09-23",
+  "ends_on": "2024-11-29",
+  "status": "draft"
+}
+```
+
+## Compliance Notes
+
+### Decree 1290 Requirements
+
+Colombian schools must comply with Decree 1290 of 2009:
+
+- Minimum of **four evaluation periods** per year
+- Clear evaluation criteria for each period
+- Timely grade reporting to students and guardians
+- Opportunity for recovery and improvement
+
+Athena ERP's period system supports all these requirements.
+
+### SIMAT Reporting
+
+School years and periods are referenced in SIMAT exports for:
+- Student enrollment records
+- Grade reporting
+- Promotion and retention data
+- Statistical reporting
+
+Ensure dates align with official calendar submitted to regional education authority.
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="School Management" icon="building" href="/admin/school-management">
+    Configure school information
+  </Card>
+  <Card title="School Settings" icon="gear" href="/admin/settings">
+    Additional school configuration
+  </Card>
+  <Card title="Academic Features" icon="graduation-cap" href="/features/academic">
+    Grades, subjects, and evaluations
+  </Card>
+  <Card title="Decree 1290" icon="file-contract" href="/compliance/decree-1290">
+    Colombian evaluation requirements
+  </Card>
+</CardGroup>

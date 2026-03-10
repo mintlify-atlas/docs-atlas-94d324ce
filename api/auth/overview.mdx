@@ -1,0 +1,196 @@
+---
+title: Authentication Overview
+description: Understanding authentication and authorization in Athena ERP
+icon: shield-check
+---
+
+## Introduction
+
+Athena ERP uses **JWT-based authentication** powered by Supabase. All API endpoints (except public ones) require a valid Bearer token in the `Authorization` header.
+
+The authentication system provides:
+- **JWT token validation** with Supabase integration
+- **Multi-tenant school context** via `X-School-Id` header
+- **Role-based permissions** (RBAC) at the code level
+- **School membership verification** against the local database
+
+## Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Supabase
+    participant API
+    participant Database
+    
+    Client->>Supabase: Login credentials
+    Supabase->>Client: JWT token
+    Client->>API: Request + Bearer token
+    API->>API: Decode & validate JWT
+    API->>Database: Fetch user & memberships
+    API->>Database: Verify school access
+    API->>Client: Authorized response
+```
+
+## Token Structure
+
+Athena accepts JWTs issued by Supabase with the following claims:
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `sub` | string | User ID (UUID format) |
+| `email` | string | User's email address |
+| `iss` | string | Issuer (Supabase auth URL) |
+| `app_metadata.school_id` | string (optional) | Suggested school context |
+| `app_metadata.roles` | array (optional) | JWT-level roles |
+
+<Note>
+The `app_metadata` roles are **suggestions**. The actual authorization is resolved against the local database using `school_memberships` table. This ensures the database is the source of truth.
+</Note>
+
+## Multi-Tenant Context
+
+Athena is a **multi-tenant system** where users can belong to multiple schools. The active school is determined by:
+
+1. **`X-School-Id` header** (explicit selection)
+2. **JWT `app_metadata.school_id`** (fallback)
+3. **Single membership** (automatic selection)
+
+### Example Request
+
+```bash
+curl https://api.athena.edu.co/api/v1/students \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "X-School-Id: 550e8400-e29b-41d4-a716-446655440000"
+```
+
+<Warning>
+If a user has multiple school memberships and no `X-School-Id` header is provided, the API will return a `400 Bad Request` error unless the user has the `manage:schools` permission (superadmin).
+</Warning>
+
+## Authorization Model
+
+Athena uses **role-based access control (RBAC)** with permissions defined in code:
+
+### Available Roles
+
+| Role | Description |
+|------|-------------|
+| `superadmin` | Platform administrator with global access |
+| `rector` | School principal with full school-level access |
+| `coordinator` | Academic coordinator with student management |
+| `secretary` | Administrative staff for enrollment and communications |
+| `teacher` | Teaching staff with grade and attendance management |
+| `student` | Student with read-only access to own data |
+| `acudiente` (guardian) | Parent/guardian with access to child's data |
+
+### Permission Hierarchy
+
+Roles are assigned **per-school** via the `school_memberships` table. A user can have different roles in different schools.
+
+Example permissions:
+- `read:all`, `write:all`, `delete:all` (superadmin, rector)
+- `read:students`, `write:enrollment` (secretary)
+- `write:grades`, `write:attendance` (teacher)
+- `read:own_data`, `read:own_grades` (student)
+
+See [Permissions Reference](/architecture/backend/permissions) for the complete permission matrix.
+
+## Security Features
+
+### JWT Validation Strategies
+
+Athena uses a **two-tier validation** approach:
+
+1. **Local JWT verification** using the shared `JWT_SECRET` from Supabase
+2. **Fallback to Supabase `/auth/v1/user` endpoint** if local decode fails
+
+This ensures tokens are validated even during key rotation or when using Supabase's refresh mechanism.
+
+### Issuer Verification
+
+All tokens must have an `iss` claim matching the configured Supabase project:
+
+```
+{supabase_url}/auth/v1
+```
+
+This prevents token injection from other Supabase projects.
+
+### Active User Check
+
+After JWT validation, the API verifies:
+- User exists in the local database (`users` table)
+- User account is active (`is_active = true`)
+- User has at least one active school membership (for tenant-scoped operations)
+
+### SSRF Protection
+
+The JWT decoder **never infers** the Supabase URL from the token itself. It only uses the server-configured `SUPABASE_URL` to prevent Server-Side Request Forgery attacks.
+
+## API Endpoints
+
+<Card title="GET /auth/me" icon="user" href="/api/auth/endpoints#get-me">
+  Get the authenticated user's profile, roles, and school memberships
+</Card>
+
+## Getting Started
+
+To authenticate with the Athena API:
+
+1. **Obtain a JWT token** from Supabase:
+   ```bash
+   curl -X POST 'https://your-project.supabase.co/auth/v1/token?grant_type=password' \
+     -H "apikey: YOUR_ANON_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"email": "user@example.com", "password": "secure_password"}'
+   ```
+
+2. **Extract the `access_token`** from the response
+
+3. **Make API requests** with the token:
+   ```bash
+   curl https://api.athena.edu.co/api/v1/auth/me \
+     -H "Authorization: Bearer {access_token}"
+   ```
+
+## Environment Configuration
+
+Required environment variables for authentication:
+
+```bash
+# JWT Configuration (must match Supabase project)
+JWT_SECRET=your-supabase-jwt-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Supabase Integration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+<Tip>
+In development, the `JWT_SECRET` defaults to `super-secret-local-dev-key-change-in-prod`. Always use a secure secret in production that matches your Supabase project settings.
+</Tip>
+
+## Error Responses
+
+Authentication errors follow a standard format:
+
+| Status Code | Reason |
+|-------------|--------|
+| `401 Unauthorized` | Missing, invalid, or expired token |
+| `403 Forbidden` | User is inactive or lacks permission |
+| `404 Not Found` | School not found |
+| `400 Bad Request` | Missing required `X-School-Id` header |
+
+Example error response:
+
+```json
+{
+  "detail": "Token inválido, expirado o malformado"
+}
+```
+
+All authentication endpoints return errors with a `WWW-Authenticate: Bearer` header as per RFC 6750.

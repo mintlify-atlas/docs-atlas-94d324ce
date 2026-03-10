@@ -1,0 +1,573 @@
+---
+title: Database Setup
+description: Configure PostgreSQL database and run migrations for Athena ERP
+---
+
+## Overview
+
+Athena ERP uses PostgreSQL 16+ as its primary database. This guide covers setup options and migration management.
+
+## Database Requirements
+
+- PostgreSQL 16 or higher
+- Support for JSONB columns
+- UUID extension
+- Async connection support (asyncpg driver)
+
+---
+
+## Option 1: Supabase (Recommended)
+
+[Supabase](https://supabase.com) provides managed PostgreSQL with additional features like authentication, realtime subscriptions, and storage.
+
+### Step 1: Create Project
+
+1. Go to [supabase.com](https://supabase.com) and sign in
+2. Click **New Project**
+3. Configure:
+   - **Name**: `athena-erp`
+   - **Database Password**: Generate strong password (save it!)
+   - **Region**: Choose closest to your users
+   - **Pricing**: Free tier is sufficient for development
+
+### Step 2: Get Connection Details
+
+In Supabase Dashboard → Settings → Database:
+
+1. **Connection string** (Transaction mode):
+   ```
+   postgresql://postgres.xxxx:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+   ```
+
+2. Convert to asyncpg format:
+   ```
+   postgresql+asyncpg://postgres.xxxx:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+   ```
+
+<Warning>
+  Use **Transaction** mode (port 6543) for migrations. Session mode (port 5432) doesn't support all PostgreSQL features needed by Alembic.
+</Warning>
+
+### Step 3: Get JWT Secret
+
+In Supabase Dashboard → Settings → API:
+
+- Copy **JWT Secret** (used for `JWT_SECRET` in backend)
+- Copy **anon public** key (used for `SUPABASE_ANON_KEY`)
+- Copy **service_role** key (used for `SUPABASE_SERVICE_ROLE_KEY`)
+
+### Step 4: Update Backend Environment
+
+In your backend `.env` or hosting platform:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://postgres.xxxx:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+JWT_SECRET=<jwt-secret-from-supabase>
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+```
+
+---
+
+## Option 2: Docker Compose (Development)
+
+For local development, use the included Docker Compose configuration.
+
+### Step 1: Start Database
+
+```bash
+cd athena-api
+docker-compose up -d db
+```
+
+This starts:
+- PostgreSQL 16 on port 5432
+- Credentials: `athena` / `athena_dev`
+- Database: `athena_db`
+
+### Step 2: Verify Connection
+
+```bash
+docker-compose ps
+```
+
+Should show `db` service as healthy.
+
+### Step 3: Access Database
+
+```bash
+# Via psql
+psql postgresql://athena:athena_dev@localhost:5432/athena_db
+
+# Or start pgAdmin (optional)
+docker-compose --profile tools up -d pgadmin
+```
+
+pgAdmin available at `http://localhost:5050`:
+- Email: `admin@athena.local`
+- Password: `admin`
+
+### Step 4: Backend Configuration
+
+```bash
+DATABASE_URL=postgresql+asyncpg://athena:athena_dev@localhost:5432/athena_db
+```
+
+---
+
+## Option 3: Self-Hosted PostgreSQL
+
+For production self-hosting.
+
+### Installation (Ubuntu/Debian)
+
+```bash
+# Add PostgreSQL repository
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
+# Install PostgreSQL 16
+sudo apt update
+sudo apt install postgresql-16 postgresql-contrib-16 -y
+```
+
+### Create Database and User
+
+```bash
+# Switch to postgres user
+sudo -u postgres psql
+```
+
+```sql
+-- Create user
+CREATE USER athena WITH PASSWORD 'strong-secure-password';
+
+-- Create database
+CREATE DATABASE athena_db OWNER athena;
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON DATABASE athena_db TO athena;
+
+-- Enable UUID extension
+\c athena_db
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Exit
+\q
+```
+
+### Configure Access
+
+Edit `/etc/postgresql/16/main/pg_hba.conf`:
+
+```
+# Allow local connections
+local   all             athena                                  md5
+host    all             athena          127.0.0.1/32            md5
+host    all             athena          ::1/128                 md5
+
+# For remote connections (production)
+host    athena_db       athena          0.0.0.0/0               md5
+```
+
+Restart PostgreSQL:
+
+```bash
+sudo systemctl restart postgresql
+```
+
+### Connection String
+
+```bash
+DATABASE_URL=postgresql+asyncpg://athena:strong-secure-password@localhost:5432/athena_db
+```
+
+---
+
+## Database Migrations
+
+Athena uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations.
+
+### Migration Files
+
+Located in `athena-api/alembic/versions/`. Each file represents a database schema change.
+
+### Run Migrations
+
+```bash
+cd athena-api
+
+# Upgrade to latest
+alembic upgrade head
+
+# Check current version
+alembic current
+
+# View migration history
+alembic history
+```
+
+### Initial Schema
+
+The first migration creates:
+
+- `users` - User accounts
+- `schools` - Educational institutions
+- `school_memberships` - User-school relationships
+- `academic_years` - School years
+- `academic_periods` - Terms/semesters
+- `grades` - Grade levels
+- `sections` - Class sections
+- `subjects` - Courses/subjects
+- `enrollments` - Student enrollments
+- `grade_components` - Grade calculation components
+- `student_grades` - Individual grades
+
+See `athena-api/alembic/versions/` for detailed schema.
+
+### Create New Migration
+
+When you modify models:
+
+```bash
+# Auto-generate migration
+alembic revision --autogenerate -m "Description of changes"
+
+# Review generated file in alembic/versions/
+
+# Apply migration
+alembic upgrade head
+```
+
+### Rollback Migration
+
+```bash
+# Rollback one version
+alembic downgrade -1
+
+# Rollback to specific revision
+alembic downgrade <revision_id>
+
+# Rollback all
+alembic downgrade base
+```
+
+---
+
+## Database Seeding
+
+After migrations, seed initial data.
+
+### Create Superadmin
+
+Required for first login:
+
+```bash
+cd athena-api
+
+# Method 1: Direct script
+python scripts/create_superadmin.py \
+  --id <supabase-user-uuid> \
+  --email admin@yourdomain.com \
+  --full-name "Admin User"
+
+# Method 2: Environment variables
+export SUPERADMIN_ID="<uuid>"
+export SUPERADMIN_EMAIL="admin@yourdomain.com"
+export SUPERADMIN_FULL_NAME="Admin User"
+python scripts/create_superadmin.py
+```
+
+<Info>
+  The `--id` must match the UUID from Supabase auth.users table if using Supabase authentication.
+</Info>
+
+### Seed Sample Data (Optional)
+
+For testing:
+
+```bash
+# TODO: Add sample data script
+# This would create sample schools, students, grades, etc.
+```
+
+---
+
+## Backup & Restore
+
+### Backup Database
+
+**Supabase**:
+1. Dashboard → Database → Backups
+2. Daily automatic backups (retained based on plan)
+3. Manual backups available
+
+**Self-Hosted**:
+```bash
+# Full backup
+pg_dump -U athena -h localhost athena_db > backup_$(date +%Y%m%d).sql
+
+# Compressed backup
+pg_dump -U athena -h localhost athena_db | gzip > backup_$(date +%Y%m%d).sql.gz
+
+# Schema only
+pg_dump -U athena -h localhost athena_db --schema-only > schema.sql
+```
+
+**Docker**:
+```bash
+docker-compose exec db pg_dump -U athena athena_db > backup_$(date +%Y%m%d).sql
+```
+
+### Restore Database
+
+**Self-Hosted**:
+```bash
+# Drop and recreate
+sudo -u postgres psql -c "DROP DATABASE athena_db;"
+sudo -u postgres psql -c "CREATE DATABASE athena_db OWNER athena;"
+
+# Restore
+psql -U athena -h localhost athena_db < backup.sql
+```
+
+**Docker**:
+```bash
+docker-compose exec -T db psql -U athena athena_db < backup.sql
+```
+
+---
+
+## Monitoring
+
+### Supabase
+
+Built-in monitoring:
+- Dashboard → Database → Usage
+- Connection pooling stats
+- Query performance insights
+
+### Self-Hosted
+
+#### Check Connections
+
+```sql
+SELECT * FROM pg_stat_activity WHERE datname = 'athena_db';
+```
+
+#### Database Size
+
+```sql
+SELECT pg_size_pretty(pg_database_size('athena_db'));
+```
+
+#### Table Sizes
+
+```sql
+SELECT
+  schemaname,
+  tablename,
+  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+```
+
+#### Slow Queries
+
+Enable `pg_stat_statements`:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+SELECT
+  query,
+  calls,
+  total_time,
+  mean_time
+FROM pg_stat_statements
+ORDER BY mean_time DESC
+LIMIT 10;
+```
+
+---
+
+## Performance Optimization
+
+### Connection Pooling
+
+**Supabase**: Built-in pooling (use Transaction or Session mode)
+
+**Self-Hosted**: Use [pgBouncer](https://www.pgbouncer.org/)
+
+```bash
+sudo apt install pgbouncer -y
+```
+
+Configure `/etc/pgbouncer/pgbouncer.ini`:
+
+```ini
+[databases]
+athena_db = host=localhost port=5432 dbname=athena_db
+
+[pgbouncer]
+listen_addr = 0.0.0.0
+listen_port = 6432
+auth_type = md5
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+max_client_conn = 1000
+default_pool_size = 20
+```
+
+Update connection string:
+```bash
+DATABASE_URL=postgresql+asyncpg://athena:password@localhost:6432/athena_db
+```
+
+### Indexes
+
+Critical indexes are created in migrations. Monitor with:
+
+```sql
+-- Unused indexes
+SELECT
+  schemaname,
+  tablename,
+  indexname,
+  idx_scan
+FROM pg_stat_user_indexes
+WHERE idx_scan = 0
+  AND indexname NOT LIKE '%_pkey';
+
+-- Missing indexes
+SELECT
+  schemaname,
+  tablename,
+  seq_scan,
+  idx_scan,
+  seq_scan - idx_scan AS too_many_seq
+FROM pg_stat_user_tables
+WHERE seq_scan - idx_scan > 1000
+ORDER BY too_many_seq DESC;
+```
+
+### Vacuum
+
+Automatic in PostgreSQL 10+, but manual vacuum helps:
+
+```bash
+# Analyze all tables
+vacuumdb -U athena -d athena_db --analyze
+
+# Full vacuum (requires downtime)
+vacuumdb -U athena -d athena_db --full
+```
+
+---
+
+## Troubleshooting
+
+### "Connection refused"
+
+**Check**:
+1. PostgreSQL is running: `sudo systemctl status postgresql`
+2. Port is open: `sudo ss -tulpn | grep 5432`
+3. Firewall allows connection
+
+### "Password authentication failed"
+
+**Check**:
+1. Credentials are correct
+2. User exists: `psql -U postgres -c "\du"`
+3. pg_hba.conf allows connection method
+
+### "Too many connections"
+
+**Check**:
+1. Current connections: `SELECT count(*) FROM pg_stat_activity;`
+2. Max connections: `SHOW max_connections;`
+3. Consider connection pooling
+
+### "FATAL: sorry, too many clients already"
+
+**Increase max_connections** in `/etc/postgresql/16/main/postgresql.conf`:
+
+```
+max_connections = 200
+```
+
+Restart: `sudo systemctl restart postgresql`
+
+### Migration fails
+
+```bash
+# Check current state
+alembic current
+
+# Check if manual changes were made
+alembic check
+
+# Force to specific version (DANGEROUS)
+alembic stamp head
+```
+
+---
+
+## Security
+
+### Best Practices
+
+1. **Strong passwords**: Use 32+ character random passwords
+2. **Limited access**: Only allow necessary IPs in pg_hba.conf
+3. **SSL/TLS**: Enable for production (Supabase does this automatically)
+4. **Principle of least privilege**: Don't use superuser for application
+5. **Regular backups**: Automate daily backups
+6. **Update regularly**: Keep PostgreSQL patched
+
+### SSL Configuration (Self-Hosted)
+
+Generate certificates:
+
+```bash
+sudo -u postgres openssl req -new -x509 -days 365 -nodes \
+  -out /var/lib/postgresql/16/main/server.crt \
+  -keyout /var/lib/postgresql/16/main/server.key
+
+sudo chmod 600 /var/lib/postgresql/16/main/server.key
+sudo chown postgres:postgres /var/lib/postgresql/16/main/server.*
+```
+
+Enable in `postgresql.conf`:
+
+```
+ssl = on
+ssl_cert_file = 'server.crt'
+ssl_key_file = 'server.key'
+```
+
+Update connection string:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://athena:password@localhost:5432/athena_db?ssl=require
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Deployment" icon="server" href="/deployment/backend">
+    Deploy the API after database is ready
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/deployment/environment-variables">
+    Configure all database-related variables
+  </Card>
+  <Card title="Data Models" icon="diagram-project" href="/architecture/data-models">
+    Understand the database schema
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore database-backed endpoints
+  </Card>
+</CardGroup>

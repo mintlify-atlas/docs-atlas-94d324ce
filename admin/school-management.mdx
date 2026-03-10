@@ -1,0 +1,224 @@
+---
+title: School Management
+description: Manage schools in Athena ERP as a superadmin
+icon: building
+---
+
+## Overview
+
+School management is exclusively available to superadmins. This module allows you to create, configure, and manage multiple schools within the Athena ERP platform. Each school operates as an independent tenant with its own data, users, and settings.
+
+<Info>
+  **Permission required**: `manage:schools` - Only users with the **superadmin** role can access these features.
+</Info>
+
+## Viewing Schools
+
+All schools in the platform are accessible from the admin panel.
+
+<Steps>
+  <Step title="Access Admin Panel">
+    Navigate to the admin section of Athena ERP. Only superadmins will see this option.
+  </Step>
+  
+  <Step title="View Schools List">
+    The schools list displays all registered institutions with their key information:
+    - School name
+    - NIT (tax identification number)
+    - Resolution number
+    - Active/inactive status
+    - Creation and update timestamps
+  </Step>
+  
+  <Step title="View School Details">
+    Click on any school to view its complete profile, including settings and configuration.
+  </Step>
+</Steps>
+
+### API Endpoint
+
+```python
+GET /admin/schools
+```
+
+Returns a list of all schools ordered by name. Each school includes its associated settings if configured.
+
+## Creating a School
+
+When creating a new school, the system automatically initializes default settings.
+
+<Steps>
+  <Step title="Prepare School Information">
+    Gather the required information:
+    - **Name**: Official school name (required)
+    - **NIT**: Colombian tax ID (optional)
+    - **Resolution**: Education ministry resolution number (optional)
+    - **Active Status**: Whether the school is operational (defaults to true)
+  </Step>
+  
+  <Step title="Create School Record">
+    Submit the school information through the admin interface or API.
+    
+    ```python
+    POST /admin/schools
+    {
+      "name": "Institución Educativa Example",
+      "nit": "900123456-7",
+      "resolution": "001234 de 2024",
+      "is_active": true
+    }
+    ```
+  </Step>
+  
+  <Step title="Settings Initialization">
+    The system automatically creates a `SchoolSettings` record linked to the new school. This includes:
+    - PEI summary storage
+    - SIMAT integration settings
+    - Branding configuration
+    - Security settings
+    - Habeas data compliance text
+  </Step>
+</Steps>
+
+<Note>
+  The school ID is automatically generated as a UUID and serves as the tenant identifier throughout the system.
+</Note>
+
+## Updating School Information
+
+School details can be updated at any time, including both basic information and advanced settings.
+
+<Steps>
+  <Step title="Identify the School">
+    Locate the school you want to update using its UUID or name.
+  </Step>
+  
+  <Step title="Update Basic Fields">
+    Modify any of the following fields:
+    - School name
+    - NIT
+    - Resolution number
+    - Active status
+    
+    ```python
+    PATCH /admin/schools/{school_id}
+    {
+      "name": "Updated School Name",
+      "is_active": false
+    }
+    ```
+  </Step>
+  
+  <Step title="Update Advanced Settings">
+    Configure institutional settings through the nested settings object:
+    
+    ```python
+    PATCH /admin/schools/{school_id}
+    {
+      "settings": {
+        "pei_summary": "Updated institutional educational project summary",
+        "simat_settings": {
+          "institution_code": "123456",
+          "enabled": true
+        },
+        "habeas_data_text": "Updated privacy policy text"
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+### School Settings Structure
+
+The `SchoolSettings` model stores institutional configuration:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pei_summary` | Text | Summary of the institutional educational project (PEI) |
+| `simat_settings` | JSON | Colombian SIMAT integration configuration |
+| `branding_settings` | JSON | Logo, colors, and visual identity |
+| `security_settings` | JSON | Security and access policies |
+| `habeas_data_text` | Text | Habeas data compliance statement |
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:24`
+
+## Deactivating vs Deleting
+
+### Deactivating a School
+
+Set `is_active` to `false` to temporarily disable a school without losing data:
+
+```python
+PATCH /admin/schools/{school_id}
+{
+  "is_active": false
+}
+```
+
+Inactive schools are retained in the database but users cannot access them.
+
+### Deleting a School
+
+<Warning>
+  **Permanent Action**: Deleting a school removes all associated data including users, students, enrollments, and records. This action cannot be undone.
+</Warning>
+
+```python
+DELETE /admin/schools/{school_id}
+```
+
+Deletion triggers cascading removal of:
+- School memberships
+- School years and academic periods
+- Students and enrollments
+- Academic records
+- Discipline cases
+- Communications
+
+## Multi-Tenancy Architecture
+
+Each school operates as an isolated tenant:
+
+- **Data Isolation**: Schools cannot access each other's data
+- **User Scoping**: Users are assigned to schools via `SchoolMembership`
+- **RLS (Row-Level Security)**: Database queries automatically filter by school context
+- **Tenant Detection**: The system identifies the current school from the user's active membership
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/admin.py:50`
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="NIT Validation">
+    Ensure the NIT follows Colombian tax ID format (e.g., `900123456-7`). While not enforced at the database level, maintaining consistency helps with SIMAT integration and official reporting.
+  </Accordion>
+  
+  <Accordion title="Resolution Numbers">
+    Store the complete resolution including number and year (e.g., `001234 de 2024`). This is required for official documentation and compliance.
+  </Accordion>
+  
+  <Accordion title="PEI Documentation">
+    Keep the PEI summary updated as it may be referenced in student reports and official communications.
+  </Accordion>
+  
+  <Accordion title="Deactivate Before Delete">
+    Always deactivate a school first and verify no active processes remain before permanent deletion.
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users" href="/admin/users">
+    Assign users and roles to schools
+  </Card>
+  <Card title="School Settings" icon="gear" href="/admin/settings">
+    Configure branding, SIMAT, and security
+  </Card>
+  <Card title="School Years" icon="calendar" href="/admin/school-years">
+    Set up academic calendar structure
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/schools/list">
+    Schools API endpoints documentation
+  </Card>
+</CardGroup>

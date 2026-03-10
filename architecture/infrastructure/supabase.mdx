@@ -1,0 +1,280 @@
+---
+title: Supabase Integration
+description: Authentication and PostgreSQL database integration with Supabase
+---
+
+## Overview
+
+Athena ERP integrates with Supabase for two primary functions:
+
+1. **Authentication** - User authentication using Supabase Auth
+2. **PostgreSQL Database** - Managed PostgreSQL database hosting
+
+## Authentication
+
+### JWT Token Validation
+
+Athena uses Supabase's JWT-based authentication system. The backend validates tokens issued by Supabase Auth:
+
+```python
+# app/auth/jwt.py
+def decode_token(token: str) -> TokenPayload:
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm],
+    )
+    # Verify issuer matches Supabase
+    expected_issuer = f"{settings.supabase_url}/auth/v1"
+```
+
+Key features:
+- Validates JWT signature using shared secret
+- Verifies token issuer matches configured Supabase URL
+- Extracts user metadata (roles, school_id) from token
+- Falls back to Supabase `/auth/v1/user` endpoint if local validation fails
+
+### Configuration
+
+Supabase authentication requires these environment variables:
+
+**Backend (.env)**
+```bash
+# JWT Secret - Must match Supabase's JWT Secret
+JWT_SECRET=your-supabase-jwt-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Supabase Connection
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # Backend only
+```
+
+**Frontend (.env)**
+```bash
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+<Warning>
+Never expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend. This key bypasses Row Level Security.
+</Warning>
+
+### Frontend Client
+
+The React frontend initializes the Supabase client:
+
+```typescript
+// src/lib/supabase.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+### Authentication Flow
+
+1. **Login**: User authenticates via Supabase Auth
+2. **Token Issuance**: Supabase returns JWT with user metadata
+3. **Token Storage**: Frontend stores token in Zustand store
+4. **API Requests**: Token sent in `Authorization: Bearer` header
+5. **Validation**: Backend validates token and loads user context
+6. **Authorization**: Backend checks user permissions via `school_memberships`
+
+### User Metadata
+
+Supabase tokens include custom metadata in `app_metadata`:
+
+```json
+{
+  "sub": "user-uuid",
+  "email": "user@example.com",
+  "app_metadata": {
+    "school_id": "school-uuid",
+    "roles": ["teacher", "coordinator"]
+  }
+}
+```
+
+<Info>
+While tokens suggest user context, the backend always validates permissions against the local `school_memberships` table.
+</Info>
+
+### Multi-Tenant Authorization
+
+Athena supports multi-school access via the `X-School-Id` header:
+
+```typescript
+const response = await fetch('/api/students', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'X-School-Id': schoolId  // Optional: specify school context
+  }
+});
+```
+
+See `app/deps.py:get_auth_context` for the complete authorization logic.
+
+## PostgreSQL Database
+
+### Connection
+
+Athena connects to Supabase's managed PostgreSQL using SQLAlchemy with async support:
+
+```python
+# app/database.py
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+
+engine = create_async_engine(
+    settings.database_url,  # postgresql+asyncpg://...
+    echo=settings.is_dev,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+)
+```
+
+### Database URL Format
+
+```bash
+# Local Development
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/athena_db
+
+# Supabase Production
+DATABASE_URL=postgresql+asyncpg://postgres:[password]@db.[project].supabase.co:5432/postgres
+```
+
+<Note>
+Use the `asyncpg` driver for async PostgreSQL connections with SQLAlchemy.
+</Note>
+
+### Database Schema
+
+Athena's schema is defined in `schema_mvp_ddl.sql` and includes:
+
+- **Multi-tenant tables**: `schools`, `school_settings`, `school_years`
+- **User management**: `users`, `school_memberships`
+- **Academic structure**: `grades`, `subjects`, `class_sections`
+- **Student records**: `students`, `enrollments`, `grades`
+- **Communications**: `messages`, `announcements`
+
+Migrations are managed using Alembic:
+
+```bash
+# Generate migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+```
+
+### Connection Pooling
+
+```python
+pool_size=10        # Normal connections
+max_overflow=20     # Additional connections under load
+pool_pre_ping=True  # Verify connection health before use
+```
+
+### Dependency Injection
+
+Database sessions are injected into route handlers:
+
+```python
+from app.database import get_db
+
+@router.get("/students")
+async def list_students(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context)
+):
+    result = await db.execute(
+        select(Student).where(Student.school_id == auth.school_id)
+    )
+    return result.scalars().all()
+```
+
+The `get_db` dependency ensures:
+- Automatic session lifecycle management
+- Transaction commit on success
+- Rollback on exceptions
+- Proper session cleanup
+
+## Migration from Local to Supabase
+
+### Development Phase
+
+During development, Athena can run with local PostgreSQL via Docker:
+
+```yaml
+# docker-compose.yml
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: athena_db
+      POSTGRES_USER: athena
+      POSTGRES_PASSWORD: athena_dev
+```
+
+### Production Migration
+
+1. **Create Supabase Project**
+2. **Copy JWT Secret** from Supabase Dashboard → Settings → API
+3. **Update Environment Variables** with Supabase credentials
+4. **Run Migrations** against Supabase database
+5. **Configure Row Level Security** (optional)
+6. **Update Connection Strings** in Railway/deployment platform
+
+## Security Considerations
+
+### JWT Secret Management
+
+<Warning>
+The `JWT_SECRET` must match between Supabase and your backend. Retrieve it from:
+Supabase Dashboard → Settings → API → JWT Settings → JWT Secret
+</Warning>
+
+### Service Role Key
+
+The service role key bypasses Row Level Security:
+- Store in backend environment only
+- Use for admin operations and data migrations
+- Never expose to frontend or client-side code
+
+### Connection Security
+
+- Always use SSL for database connections
+- Rotate database passwords periodically
+- Restrict database access to application servers
+- Use connection pooling to prevent resource exhaustion
+
+## Monitoring
+
+### Supabase Dashboard
+
+Monitor database health via Supabase Dashboard:
+- Active connections
+- Query performance
+- Storage usage
+- API usage
+
+### Application Logging
+
+```python
+# Enable SQL logging in development
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.is_dev  # Logs all SQL queries
+)
+```
+
+## Related Documentation
+
+- [Authentication System](/api/auth/supabase-integration)
+- [Multi-Tenant Architecture](/architecture/multi-tenancy)
+- [Database Schema](/architecture/database)
+- [Railway Deployment](/architecture/infrastructure/railway)

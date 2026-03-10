@@ -1,0 +1,442 @@
+---
+title: "School Settings & Configuration"
+description: "Manage school years, academic periods, and institutional media"
+---
+
+## List School Years
+
+<api-endpoint method="GET" path="/schools/years" />
+
+Retrieve all school years (academic years) for the current school, ordered by start date descending.
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the school year
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  ID of the school
+</response-field>
+
+<response-field name="name" type="string">
+  Name of the school year (e.g., "2026", "Año Escolar 2026")
+</response-field>
+
+<response-field name="starts_on" type="date">
+  Start date of the school year
+</response-field>
+
+<response-field name="ends_on" type="date">
+  End date of the school year
+</response-field>
+
+<response-field name="status" type="string">
+  Status: `planning`, `active`, `completed`, or `archived`
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  Creation timestamp
+</response-field>
+
+<response-field name="updated_at" type="datetime">
+  Last update timestamp
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/schools/years" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "777pqr88-stu9-0123-4567-890123456stu",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "name": "2026",
+    "starts_on": "2026-01-20",
+    "ends_on": "2026-11-30",
+    "status": "active",
+    "created_at": "2025-11-01T09:00:00Z",
+    "updated_at": "2026-01-20T08:00:00Z"
+  },
+  {
+    "id": "888qrs99-tuv0-1234-5678-901234567tuv",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "name": "2025",
+    "starts_on": "2025-01-22",
+    "ends_on": "2025-11-28",
+    "status": "completed",
+    "created_at": "2024-11-15T10:00:00Z",
+    "updated_at": "2025-11-28T18:00:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Create School Year
+
+<api-endpoint method="POST" path="/schools/years" />
+
+Create a new school year (academic year) for the current school.
+
+### Request Body
+
+<param-field path="name" type="string" required>
+  Name of the school year
+</param-field>
+
+<param-field path="starts_on" type="date" required>
+  Start date (YYYY-MM-DD format)
+</param-field>
+
+<param-field path="ends_on" type="date" required>
+  End date (YYYY-MM-DD format)
+</param-field>
+
+<param-field path="status" type="string" default="planning">
+  Initial status: `planning`, `active`, `completed`, or `archived`
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/schools/years" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "2027",
+    "starts_on": "2027-01-25",
+    "ends_on": "2027-11-26",
+    "status": "planning"
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "999rst00-uvw1-2345-6789-012345678uvw",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "name": "2027",
+  "starts_on": "2027-01-25",
+  "ends_on": "2027-11-26",
+  "status": "planning",
+  "created_at": "2026-03-10T14:00:00Z",
+  "updated_at": "2026-03-10T14:00:00Z"
+}
+```
+</response-example>
+
+---
+
+## List Academic Periods
+
+<api-endpoint method="GET" path="/schools/periods" />
+
+Retrieve all academic periods (terms/quarters) for the current school, optionally filtered by school year.
+
+### Query Parameters
+
+<param-field path="school_year_id" type="uuid" optional>
+  Filter periods by school year
+</param-field>
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the period
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  ID of the school
+</response-field>
+
+<response-field name="school_year_id" type="uuid">
+  ID of the parent school year
+</response-field>
+
+<response-field name="number" type="integer">
+  Period number (1, 2, 3, 4, etc.)
+</response-field>
+
+<response-field name="name" type="string">
+  Name of the period (e.g., "Primer Período", "Q1")
+</response-field>
+
+<response-field name="starts_on" type="date">
+  Start date of the period
+</response-field>
+
+<response-field name="ends_on" type="date">
+  End date of the period
+</response-field>
+
+<response-field name="status" type="string">
+  Status: `draft`, `active`, `closed`, or `archived`
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  Creation timestamp
+</response-field>
+
+<response-field name="updated_at" type="datetime">
+  Last update timestamp
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/schools/periods?school_year_id=777pqr88-stu9-0123-4567-890123456stu" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "111stu11-vwx2-3456-7890-123456789vwx",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "school_year_id": "777pqr88-stu9-0123-4567-890123456stu",
+    "number": 1,
+    "name": "Primer Período",
+    "starts_on": "2026-01-20",
+    "ends_on": "2026-03-31",
+    "status": "closed",
+    "created_at": "2025-12-01T10:00:00Z",
+    "updated_at": "2026-03-31T18:00:00Z"
+  },
+  {
+    "id": "222tuv22-wxy3-4567-8901-234567890wxy",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "school_year_id": "777pqr88-stu9-0123-4567-890123456stu",
+    "number": 2,
+    "name": "Segundo Período",
+    "starts_on": "2026-04-01",
+    "ends_on": "2026-06-15",
+    "status": "active",
+    "created_at": "2025-12-01T10:00:00Z",
+    "updated_at": "2026-04-01T08:00:00Z"
+  },
+  {
+    "id": "333uvw33-xyz4-5678-9012-345678901xyz",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "school_year_id": "777pqr88-stu9-0123-4567-890123456stu",
+    "number": 3,
+    "name": "Tercer Período",
+    "starts_on": "2026-06-16",
+    "ends_on": "2026-09-15",
+    "status": "draft",
+    "created_at": "2025-12-01T10:00:00Z",
+    "updated_at": "2025-12-01T10:00:00Z"
+  },
+  {
+    "id": "444vwx44-yza5-6789-0123-456789012yza",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "school_year_id": "777pqr88-stu9-0123-4567-890123456stu",
+    "number": 4,
+    "name": "Cuarto Período",
+    "starts_on": "2026-09-16",
+    "ends_on": "2026-11-30",
+    "status": "draft",
+    "created_at": "2025-12-01T10:00:00Z",
+    "updated_at": "2025-12-01T10:00:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Create Academic Period
+
+<api-endpoint method="POST" path="/schools/periods" />
+
+Create a new academic period within a school year.
+
+### Request Body
+
+<param-field path="school_year_id" type="uuid" required>
+  ID of the school year this period belongs to
+</param-field>
+
+<param-field path="number" type="integer" required>
+  Period number (1, 2, 3, 4, etc.)
+</param-field>
+
+<param-field path="name" type="string" required>
+  Name of the period
+</param-field>
+
+<param-field path="starts_on" type="date" required>
+  Start date (YYYY-MM-DD format)
+</param-field>
+
+<param-field path="ends_on" type="date" required>
+  End date (YYYY-MM-DD format)
+</param-field>
+
+<param-field path="status" type="string" default="draft">
+  Initial status: `draft`, `active`, `closed`, or `archived`
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/schools/periods" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "school_year_id": "999rst00-uvw1-2345-6789-012345678uvw",
+    "number": 1,
+    "name": "Primer Período 2027",
+    "starts_on": "2027-01-25",
+    "ends_on": "2027-04-05",
+    "status": "draft"
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "555wxy55-zab6-7890-1234-567890123zab",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "school_year_id": "999rst00-uvw1-2345-6789-012345678uvw",
+  "number": 1,
+  "name": "Primer Período 2027",
+  "starts_on": "2027-01-25",
+  "ends_on": "2027-04-05",
+  "status": "draft",
+  "created_at": "2026-03-10T14:30:00Z",
+  "updated_at": "2026-03-10T14:30:00Z"
+}
+```
+</response-example>
+
+---
+
+## Upload School Media
+
+<api-endpoint method="POST" path="/schools/media" />
+
+Upload institutional media files such as logos, images, or documents.
+
+### Request Body (multipart/form-data)
+
+<param-field path="file" type="file" required>
+  File to upload
+  - For logos: PNG, JPG, JPEG (max 5 MB)
+  - For other media: PNG, JPG, JPEG, PDF (max 15 MB)
+</param-field>
+
+<param-field path="folder" type="string" default="media">
+  Destination folder: `logos`, `media`, or custom folder name
+</param-field>
+
+### Response
+
+<response-field name="r2_object_key" type="string">
+  Storage key for the uploaded file
+</response-field>
+
+<response-field name="file_name" type="string">
+  Original filename
+</response-field>
+
+<response-field name="folder" type="string">
+  Destination folder
+</response-field>
+
+<request-example>
+```bash
+# Upload a logo
+curl -X POST "https://api.athena-erp.com/schools/media" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -F "file=@/path/to/logo.png" \
+  -F "folder=logos"
+
+# Upload a general document
+curl -X POST "https://api.athena-erp.com/schools/media" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -F "file=@/path/to/document.pdf" \
+  -F "folder=media"
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "r2_object_key": "987fcdeb-51a2-43d1-b789-123456789abc/school/logos/logo_abc123def456.png",
+  "file_name": "logo.png",
+  "folder": "logos"
+}
+```
+</response-example>
+
+## File Upload Notes
+
+<info>
+**Automatic Registration**: Uploaded files are automatically added to the school's `branding_settings.files` array in school settings.
+</info>
+
+<info>
+**Logo Auto-Assignment**: When uploading to the `logos` folder, the file is automatically set as the school's primary logo in `branding_settings.logo_r2_object_key`.
+</info>
+
+<warning>
+**File Size Limits**:
+- Logos: 5 MB maximum
+- Other media: 15 MB maximum
+</warning>
+
+## Status Values Reference
+
+### School Year Status
+
+| Status | Description |
+|--------|-------------|
+| `planning` | Year is being planned, not yet active |
+| `active` | Currently active academic year |
+| `completed` | Year has ended, records finalized |
+| `archived` | Archived for historical reference |
+
+### Academic Period Status
+
+| Status | Description |
+|--------|-------------|
+| `draft` | Period planned but not yet started |
+| `active` | Currently active period |
+| `closed` | Period completed, grades finalized |
+| `archived` | Archived for historical reference |
+
+## Permissions
+
+| Operation | Required Permission |
+|-----------|--------------------|
+| List Years/Periods | `read:all`, `read:grades`, or `read:schedule` |
+| Create Year/Period | `config:institution` or `write:all` |
+| Upload Media | `config:institution` or `write:all` |
+
+## Best Practices
+
+<tip>
+**Plan Ahead**: Create school years and periods well in advance of the academic year start date to allow time for scheduling and enrollment.
+</tip>
+
+<tip>
+**Period Planning**: Most Colombian schools use 4 academic periods per year. Ensure dates don't overlap between periods.
+</tip>
+
+<tip>
+**Status Management**: Update period status to `active` when the period begins and `closed` when grades are finalized.
+</tip>

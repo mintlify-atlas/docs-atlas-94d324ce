@@ -1,0 +1,109 @@
+---
+title: "Introduction"
+description: "Welcome to Athena ERP - School Management System for Colombian Educational Institutions"
+---
+
+# Welcome to Athena ERP
+
+Athena ERP is a comprehensive school management system designed specifically for Colombian educational institutions. Built with modern web technologies, Athena streamlines enrollment, academic tracking, discipline management, and communications while ensuring full compliance with Colombian educational regulations.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Enrollment Management" icon="user-plus" href="/features/enrollment">
+    Complete student enrollment workflow with document management and guardian relationships
+  </Card>
+  <Card title="Academic Tracking" icon="graduation-cap" href="/features/academic">
+    Manage subjects, grades, attendance, and study plans with full Decree 1290 compliance
+  </Card>
+  <Card title="Discipline Management" icon="scale-balanced" href="/features/discipline">
+    Handle behavioral cases with due process workflow and comprehensive event tracking
+  </Card>
+  <Card title="Communications" icon="bullhorn" href="/features/communications">
+    Broadcast circulars and manage institutional communications efficiently
+  </Card>
+</CardGroup>
+
+## Multi-Tenant Architecture
+
+Athena is built from the ground up as a multi-tenant SaaS platform. Each school operates in complete isolation with:
+
+- **Tenant Isolation**: All data is scoped to the school level with automatic tenant filtering
+- **Role-Based Access Control**: Seven distinct roles (Rector, Coordinator, Secretary, Teacher, Student, Guardian, Superadmin) with granular permissions
+- **Scalable Infrastructure**: Built on FastAPI, PostgreSQL, and modern cloud services
+
+## Colombian Compliance
+
+Athena ensures full compliance with Colombian educational regulations:
+
+<CardGroup cols={2}>
+  <Card title="SIMAT Integration" icon="file-export" href="/compliance/simat">
+    Export enrollment data in SIMAT-compatible formats
+  </Card>
+  <Card title="Habeas Data" icon="shield-check" href="/compliance/habeas-data">
+    Full compliance with Ley 1581/2012 for data protection
+  </Card>
+  <Card title="Decree 1290" icon="book-open" href="/compliance/decree-1290">
+    Academic evaluation system aligned with Colombian standards
+  </Card>
+  <Card title="Audit Logging" icon="clock-rotate-left" href="/admin/settings">
+    Complete audit trail for all data access and modifications
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+<CardGroup cols={2}>
+  <Card title="Get Started" icon="rocket" href="/quickstart">
+    Set up your school instance in minutes
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Deploy Athena to your infrastructure
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/auth/overview">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/stack">
+    Understand the technical architecture
+  </Card>
+</CardGroup>
+
+## Technology Stack
+
+Athena is built with modern, production-ready technologies:
+
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic
+- **Frontend**: React 19, TypeScript, Vite, Zustand
+- **Database**: PostgreSQL (Supabase)
+- **Authentication**: Supabase Auth with JWT validation
+- **File Storage**: Cloudflare R2 (S3-compatible)
+- **Hosting**: Railway (backend), static hosting (frontend)
+
+## User Roles
+
+Athena supports seven distinct user roles, each with specific permissions and access levels:
+
+<CardGroup cols={3}>
+  <Card title="Rector" icon="user-tie" href="/roles/rector">
+    Full administrative access
+  </Card>
+  <Card title="Coordinator" icon="user-gear" href="/roles/coordinator">
+    Discipline and academic oversight
+  </Card>
+  <Card title="Secretary" icon="user-pen" href="/roles/secretary">
+    Enrollment and communications
+  </Card>
+  <Card title="Teacher" icon="chalkboard-user" href="/roles/teacher">
+    Grades and attendance
+  </Card>
+  <Card title="Student" icon="user-graduate" href="/roles/student">
+    View own academic data
+  </Card>
+  <Card title="Guardian" icon="users" href="/roles/overview">
+    View child's information
+  </Card>
+</CardGroup>
+
+<Note>
+Athena is actively developed with a focus on the Colombian educational context. Features are designed to align with local regulations, workflows, and best practices.
+</Note>

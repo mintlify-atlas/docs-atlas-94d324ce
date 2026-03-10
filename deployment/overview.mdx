@@ -1,0 +1,108 @@
+---
+title: Deployment Overview
+description: Complete guide to deploying Athena ERP in production environments
+---
+
+## Architecture
+
+Athena ERP consists of three main components:
+
+- **Backend API**: FastAPI application (Python 3.12+)
+- **Frontend**: React application built with Vite
+- **Database**: PostgreSQL 16+ (managed via Supabase or self-hosted)
+
+## Deployment Options
+
+Athena ERP can be deployed in several configurations:
+
+### 1. Production (Recommended)
+- **Backend**: Railway, Render, or any Python hosting platform
+- **Frontend**: Vercel, Netlify, or Cloudflare Pages
+- **Database**: Supabase (managed PostgreSQL)
+- **Storage**: Cloudflare R2 for document uploads
+
+### 2. Docker Compose (Development/Testing)
+- Full stack running locally with Docker
+- PostgreSQL container included
+- Best for development and testing
+
+### 3. Self-Hosted
+- Deploy all components on your own infrastructure
+- Full control over environment and scaling
+- Requires more maintenance
+
+## Prerequisites
+
+Before deploying, ensure you have:
+
+- Python 3.12 or higher (for backend)
+- Node.js 18+ (for frontend)
+- PostgreSQL 16+ database
+- Domain name (for production)
+- SSL certificates (handled by hosting platforms)
+
+## Quick Start
+
+Follow these steps for a production deployment:
+
+1. **Database Setup**: Create a Supabase project or PostgreSQL database
+2. **Backend Deployment**: Deploy the FastAPI application
+3. **Run Migrations**: Apply Alembic database migrations
+4. **Frontend Deployment**: Build and deploy the React application
+5. **Environment Configuration**: Set all required environment variables
+6. **Create Admin User**: Run the superadmin creation script
+
+## Security Checklist
+
+Before going live, verify:
+
+- [ ] `JWT_SECRET` is a strong, randomly generated secret
+- [ ] `ENVIRONMENT` is set to `production`
+- [ ] Database credentials are secure and not exposed
+- [ ] CORS origins are restricted to your frontend domain
+- [ ] HTTPS is enabled for all services
+- [ ] Supabase service role key is only in backend (never frontend)
+- [ ] Sentry is configured for error tracking (optional)
+
+## Monitoring
+
+### Health Checks
+
+The API provides health check endpoints:
+
+- `GET /health` - Basic health status
+- `GET /api/v1/health` - Detailed health information
+
+### Error Tracking
+
+Configure Sentry DSN in environment variables for automatic error reporting:
+
+```bash
+SENTRY_DSN=https://xxxxx@xxxxx.ingest.sentry.io/xxxxx
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Deployment" icon="server" href="/deployment/backend">
+    Deploy the FastAPI backend to Railway or other platforms
+  </Card>
+  <Card title="Frontend Deployment" icon="window" href="/deployment/frontend">
+    Build and deploy the React frontend
+  </Card>
+  <Card title="Database Setup" icon="database" href="/deployment/database">
+    Configure PostgreSQL and run migrations
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/deployment/environment-variables">
+    Complete reference of all configuration options
+  </Card>
+</CardGroup>
+
+## Support
+
+For deployment issues:
+
+1. Check the logs from your hosting platform
+2. Verify all environment variables are set correctly
+3. Test database connectivity
+4. Review the API health endpoint

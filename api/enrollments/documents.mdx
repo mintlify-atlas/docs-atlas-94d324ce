@@ -1,0 +1,281 @@
+---
+title: "Enrollment Documents"
+description: "Upload and retrieve documents associated with student enrollments"
+---
+
+## Upload Document
+
+<api>POST /api/enrollments/{enrollment_id}/documents</api>
+
+Upload a document file to an enrollment. Supports PDF and image files (PNG, JPG, JPEG).
+
+### Path Parameters
+
+<ParamField path="enrollment_id" type="uuid" required>
+  Unique identifier of the enrollment
+</ParamField>
+
+### Form Data Parameters
+
+<ParamField body="file" type="file" required>
+  The document file to upload. Supported formats:
+  - PDF (`.pdf`)
+  - PNG (`.png`)
+  - JPEG (`.jpg`, `.jpeg`)
+  
+  Maximum file size: 10 MB
+</ParamField>
+
+<ParamField body="document_type" type="string" required>
+  Type of document being uploaded. Examples:
+  - `birth_certificate` - Birth certificate
+  - `id_card` - Identity card
+  - `health_certificate` - Health/vaccination certificate
+  - `previous_grades` - Academic records from previous school
+  - `photo` - Student photo
+  - Custom types are supported
+</ParamField>
+
+<ParamField body="document_version" type="string">
+  Version identifier for the document (e.g., "1", "2", "2024")
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="document" type="object">
+  The uploaded document object
+  
+  <Expandable title="Document Properties">
+    <ResponseField name="id" type="uuid">
+      Document identifier
+    </ResponseField>
+    
+    <ResponseField name="school_id" type="uuid">
+      School identifier
+    </ResponseField>
+    
+    <ResponseField name="enrollment_id" type="uuid">
+      Enrollment identifier
+    </ResponseField>
+    
+    <ResponseField name="document_type" type="string">
+      Type of document
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Document status ("uploaded" for new uploads)
+    </ResponseField>
+    
+    <ResponseField name="r2_object_key" type="string">
+      Storage key for the document file
+    </ResponseField>
+    
+    <ResponseField name="file_name" type="string">
+      Original filename
+    </ResponseField>
+    
+    <ResponseField name="uploaded_at" type="datetime">
+      Upload timestamp
+    </ResponseField>
+    
+    <ResponseField name="validated_at" type="datetime" nullable>
+      Validation timestamp (null for new uploads)
+    </ResponseField>
+    
+    <ResponseField name="validated_by" type="uuid" nullable>
+      User ID who validated (null for new uploads)
+    </ResponseField>
+    
+    <ResponseField name="accepted_by_guardian_id" type="uuid" nullable>
+      Guardian ID who accepted
+    </ResponseField>
+    
+    <ResponseField name="document_version" type="string" nullable>
+      Document version
+    </ResponseField>
+    
+    <ResponseField name="metadata_json" type="object">
+      Additional metadata
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="enrollment_id" type="string">
+  The enrollment ID (as string)
+</ResponseField>
+
+### Upload Examples
+
+<RequestExample>
+```bash Upload Birth Certificate
+curl -X POST "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/documents" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -F "file=@/path/to/birth_certificate.pdf" \
+  -F "document_type=birth_certificate" \
+  -F "document_version=1"
+```
+
+```bash Upload ID Card
+curl -X POST "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/documents" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -F "file=@/path/to/id_card.jpg" \
+  -F "document_type=id_card"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "message": "Documento subido",
+  "document": {
+    "id": "e5f6a7b8-c9d0-1234-efab-567890123456",
+    "school_id": "550e8400-e29b-41d4-a716-446655440000",
+    "enrollment_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "document_type": "birth_certificate",
+    "status": "uploaded",
+    "r2_object_key": "550e8400-e29b-41d4-a716-446655440000/students/b2c3d4e5-f6a7-8901-bcde-f12345678901/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/birth_certificate.pdf",
+    "file_name": "birth_certificate.pdf",
+    "uploaded_at": "2024-01-16T09:15:00Z",
+    "validated_at": null,
+    "validated_by": null,
+    "accepted_by_guardian_id": null,
+    "document_version": "1",
+    "metadata_json": {}
+  },
+  "enrollment_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+```json 404 Enrollment Not Found
+{
+  "detail": "Matrícula no encontrada"
+}
+```
+
+```json 500 Upload Error
+{
+  "detail": "Error subiendo a R2: Connection timeout"
+}
+```
+</ResponseExample>
+
+---
+
+## Get Document Content
+
+<api>GET /api/enrollments/{enrollment_id}/documents/content</api>
+
+Retrieve the actual file content of a document. This is an authenticated proxy to the file storage.
+
+### Path Parameters
+
+<ParamField path="enrollment_id" type="uuid" required>
+  Unique identifier of the enrollment
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="document_type" type="string" required>
+  Type of document to retrieve (e.g., "birth_certificate", "id_card")
+</ParamField>
+
+<ParamField query="mode" type="string" default="inline">
+  How to serve the file:
+  - `inline` - Display in browser (default)
+  - `download` - Force download with Content-Disposition header
+</ParamField>
+
+### Response
+
+Returns the raw file content with appropriate headers:
+- **Content-Type**: Based on file type (e.g., `application/pdf`, `image/jpeg`)
+- **Content-Disposition**: `inline` or `attachment` based on mode parameter
+- **Cache-Control**: `no-store` to prevent caching of sensitive documents
+- **X-Content-Type-Options**: `nosniff` for security
+- **Content-Security-Policy**: `sandbox` for additional security
+
+### Retrieval Examples
+
+<RequestExample>
+```bash View Document in Browser
+curl -X GET "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/documents/content?document_type=birth_certificate&mode=inline" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```bash Download Document
+curl -X GET "https://api.athena-erp.com/api/enrollments/a1b2c3d4-e5f6-7890-abcd-ef1234567890/documents/content?document_type=birth_certificate&mode=download" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -o birth_certificate.pdf
+```
+</RequestExample>
+
+<ResponseExample>
+```text 200 Success
+[Binary file content with appropriate Content-Type header]
+```
+
+```json 404 Document Not Found
+{
+  "detail": "Documento no encontrado"
+}
+```
+
+```json 404 Enrollment Not Found
+{
+  "detail": "Matrícula no encontrada"
+}
+```
+
+```json 400 Invalid Mode
+{
+  "detail": "mode inválido"
+}
+```
+
+```json 500 Retrieval Error
+{
+  "detail": "No se pudo obtener el archivo en R2: Connection timeout"
+}
+```
+</ResponseExample>
+
+## Document Upload Behavior
+
+- If a document of the same `document_type` already exists for the enrollment, it will be **replaced** (updated)
+- The old file will be overwritten with the new upload
+- The `uploaded_at` timestamp will be updated to the current time
+- The `status` will be reset to `"uploaded"`
+- This allows for document corrections or updates without creating duplicates
+
+## File Validation
+
+- **Allowed file types**: PDF, PNG, JPG, JPEG
+- **Maximum file size**: 10 MB
+- **PDF validation**: Files with `.pdf` extension are validated to have correct PDF magic bytes
+- File names are sanitized and normalized for safe storage
+
+## Storage Structure
+
+Documents are stored with the following path structure:
+```
+{school_id}/students/{student_id}/enrollments/{enrollment_id}/{document_type}.{ext}
+```
+
+This ensures:
+- Organized storage by school and student
+- Easy identification of document ownership
+- Automatic file replacement for same document types
+
+## Permissions Required
+
+### Upload Documents
+- `write:enrollment`
+- `write:all`
+
+### Retrieve Documents
+- `read:enrollment`
+- `read:all`

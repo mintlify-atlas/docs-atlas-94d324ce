@@ -1,0 +1,595 @@
+---
+title: School Settings
+description: Configure institutional settings, branding, and integrations
+icon: gear
+---
+
+## Overview
+
+School settings provide advanced configuration options for each institution in Athena ERP. These settings control institutional identity, Colombian compliance features, branding, security policies, and integration parameters.
+
+<Info>
+  **Permissions required**:
+  - View: Any user can view their school's information via `/schools/me`
+  - Edit: `config:institution` or `write:all` (typically Rector or Superadmin)
+</Info>
+
+## Settings Structure
+
+Each school has an associated `SchoolSettings` record that stores configuration as structured JSON and text fields.
+
+### Core Settings Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `school_id` | UUID | Primary key, links to school |
+| `pei_summary` | Text | Institutional Educational Project summary |
+| `simat_settings` | JSON | Colombian SIMAT integration config |
+| `branding_settings` | JSON | Visual identity and uploaded files |
+| `security_settings` | JSON | Access control and security policies |
+| `habeas_data_text` | Text | Privacy and data protection statement |
+| `updated_at` | Timestamp | Last modification time |
+
+Source: `/home/daytona/workspace/source/athena-api/app/models/school.py:24`
+
+## Viewing School Settings
+
+School administrators can view their institution's complete configuration.
+
+<Steps>
+  <Step title="Access Current School Info">
+    ```python
+    GET /schools/me
+    ```
+    
+    Returns complete school information including settings for the authenticated user's current school context.
+  </Step>
+  
+  <Step title="Review Settings Structure">
+    The response includes:
+    ```json
+    {
+      "id": "school-uuid",
+      "name": "Institución Educativa Example",
+      "nit": "900123456-7",
+      "resolution": "001234 de 2024",
+      "is_active": true,
+      "pei_summary": "Summary text...",
+      "settings": {
+        "school_id": "school-uuid",
+        "pei_summary": "Detailed PEI...",
+        "simat_settings": { ... },
+        "branding_settings": { ... },
+        "security_settings": { ... },
+        "habeas_data_text": "Privacy statement...",
+        "updated_at": "2024-03-10T10:00:00Z"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-03-10T10:00:00Z"
+    }
+    ```
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:47`
+
+<Note>
+  Superadmins can access any school's settings via `/admin/schools/{school_id}` endpoint.
+</Note>
+
+## Updating School Settings
+
+Settings can be updated partially without affecting unchanged fields.
+
+<Steps>
+  <Step title="Prepare Update Payload">
+    Include only the fields you want to modify:
+    
+    ```python
+    PATCH /schools/me
+    {
+      "name": "Updated School Name",
+      "settings": {
+        "pei_summary": "Updated institutional project summary"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Settings Upsert Logic">
+    If the school doesn't have settings yet, the system automatically creates them:
+    - Checks for existing `SchoolSettings` record
+    - Creates new record if missing
+    - Updates provided fields
+    - Preserves unchanged fields
+    
+    Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:39`
+  </Step>
+  
+  <Step title="Verify Update">
+    The endpoint returns the complete updated school record including all settings.
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:54`
+
+## Institutional Educational Project (PEI)
+
+The PEI is a fundamental document required by Colombian law (Law 115 of 1994).
+
+### PEI Summary Field
+
+```python
+{
+  "settings": {
+    "pei_summary": "El PEI de nuestra institución se centra en..."
+  }
+}
+```
+
+**Purpose:**
+- Store key elements of the institutional educational project
+- Reference in official documentation
+- Display on school portal and reports
+- Compliance with MEN requirements
+
+**Best Practices:**
+- Keep summary concise (2-3 paragraphs)
+- Highlight mission, vision, and values
+- Update annually or when institutional direction changes
+- Include educational model or pedagogical approach
+
+<Tip>
+  The full PEI document can be uploaded as a PDF file using the media upload feature and referenced in the branding settings.
+</Tip>
+
+## SIMAT Integration Settings
+
+Configuration for Colombian SIMAT (Sistema Integrado de Matrícula) integration.
+
+### SIMAT Settings Structure
+
+```json
+{
+  "simat_settings": {
+    "institution_code": "123456789012",
+    "dane_code": "111001012345",
+    "institution_type": "oficial",
+    "calendar_type": "A",
+    "enabled": true,
+    "last_sync": "2024-03-01T10:00:00Z",
+    "sync_schedule": "weekly",
+    "export_options": {
+      "include_inactive": false,
+      "include_graduates": true
+    }
+  }
+}
+```
+
+### Configuration Fields
+
+<AccordionGroup>
+  <Accordion title="Institution Code">
+    The unique 12-digit SIMAT identifier assigned by the Ministry of Education. Format: `DDMMIIIIIICC` where:
+    - DD: Department code
+    - MM: Municipality code
+    - IIIIII: Institution sequential
+    - CC: Check digits
+  </Accordion>
+  
+  <Accordion title="DANE Code">
+    Educational establishment DANE code. Format: `DDMMMMMMMMMM` (department + municipality + sequence).
+  </Accordion>
+  
+  <Accordion title="Institution Type">
+    - `oficial`: Public school
+    - `no_oficial`: Private school
+    - `regimen_especial`: Special regime
+  </Accordion>
+  
+  <Accordion title="Calendar Type">
+    - `A`: Traditional calendar (Feb-Nov)
+    - `B`: International calendar (Aug-Jun)
+    - `C`: Special flexible calendar
+  </Accordion>
+</AccordionGroup>
+
+### Updating SIMAT Settings
+
+```python
+PATCH /schools/me
+{
+  "settings": {
+    "simat_settings": {
+      "institution_code": "111001012345",
+      "dane_code": "111001012345",
+      "institution_type": "oficial",
+      "calendar_type": "A",
+      "enabled": true
+    }
+  }
+}
+```
+
+<Warning>
+  Ensure SIMAT codes are accurate. Incorrect codes will cause export failures and compliance issues with regional education authorities.
+</Warning>
+
+## Branding Settings
+
+Customize the school's visual identity and manage institutional files.
+
+### Branding Structure
+
+```json
+{
+  "branding_settings": {
+    "logo_r2_object_key": "school-uuid/school/logos/logo.png",
+    "primary_color": "#2563eb",
+    "secondary_color": "#1e40af",
+    "files": [
+      {
+        "file_name": "logo.png",
+        "folder": "logos",
+        "r2_object_key": "school-uuid/school/logos/logo.png",
+        "uploaded_at": "2024-03-10T10:00:00Z"
+      },
+      {
+        "file_name": "pei_completo.pdf",
+        "folder": "documents",
+        "r2_object_key": "school-uuid/school/documents/pei_completo.pdf",
+        "uploaded_at": "2024-03-10T11:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+### Uploading School Media
+
+The system provides a dedicated endpoint for uploading institutional files.
+
+<Steps>
+  <Step title="Prepare File">
+    Supported file types vary by folder:
+    - **Logos**: PNG, JPG, JPEG (max 5MB)
+    - **Other folders**: PNG, JPG, JPEG, PDF (max 15MB)
+  </Step>
+  
+  <Step title="Upload to R2">
+    ```python
+    POST /schools/media
+    Content-Type: multipart/form-data
+    
+    file: [binary file data]
+    folder: "logos"  # or "documents", "media", etc.
+    ```
+    
+    The system:
+    - Validates file type and size
+    - Sanitizes filename
+    - Uploads to Cloudflare R2 storage
+    - Updates branding settings automatically
+  </Step>
+  
+  <Step title="Access Uploaded Files">
+    Files are accessible via their R2 object key. The system returns:
+    
+    ```json
+    {
+      "r2_object_key": "school-uuid/school/logos/logo.png",
+      "file_name": "logo.png",
+      "folder": "logos"
+    }
+    ```
+  </Step>
+</Steps>
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:74`
+
+### Logo Management
+
+When uploading to the `logos` folder, the system automatically sets the logo as the primary:
+
+```json
+{
+  "branding_settings": {
+    "logo_r2_object_key": "latest-logo-key"
+  }
+}
+```
+
+This logo is used in:
+- Student reports and certificates
+- Email communications
+- Portal header
+- Official documents
+
+### File Organization
+
+Organize files by folder:
+
+- **logos**: School emblems and visual identity
+- **documents**: PEI, manual de convivencia, resolutions
+- **media**: Photos, videos, promotional materials
+- **templates**: Document templates for reports
+
+Source: `/home/daytona/workspace/source/athena-api/app/routers/schools.py:82`
+
+## Security Settings
+
+Configure access control and security policies.
+
+### Security Settings Structure
+
+```json
+{
+  "security_settings": {
+    "password_policy": {
+      "min_length": 8,
+      "require_uppercase": true,
+      "require_numbers": true,
+      "require_special_chars": false,
+      "expiry_days": 90
+    },
+    "session_timeout_minutes": 60,
+    "max_login_attempts": 5,
+    "require_2fa_for_roles": ["rector", "secretary"],
+    "ip_whitelist": [],
+    "allowed_file_types": ["pdf", "png", "jpg", "jpeg", "docx"],
+    "max_file_size_mb": 10
+  }
+}
+```
+
+### Security Configuration
+
+<AccordionGroup>
+  <Accordion title="Password Policy">
+    Define password requirements for school users:
+    - Minimum length
+    - Character requirements (uppercase, numbers, special)
+    - Password expiration period
+    
+    Policies are enforced during user creation and password changes.
+  </Accordion>
+  
+  <Accordion title="Session Management">
+    Control user session behavior:
+    - Timeout period after inactivity
+    - Maximum concurrent sessions
+    - Remember me duration
+  </Accordion>
+  
+  <Accordion title="Login Security">
+    Protect against unauthorized access:
+    - Maximum failed login attempts
+    - Account lockout duration
+    - IP-based restrictions
+  </Accordion>
+  
+  <Accordion title="Two-Factor Authentication">
+    Require 2FA for sensitive roles:
+    - Rector (full admin access)
+    - Secretary (student data access)
+    - Coordinator (discipline records)
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Some security features may require additional configuration in Supabase Auth settings.
+</Note>
+
+## Habeas Data Compliance
+
+Colombian Law 1581 of 2012 requires clear data protection policies.
+
+### Habeas Data Text
+
+```python
+{
+  "settings": {
+    "habeas_data_text": """
+    AUTORIZACIÓN TRATAMIENTO DE DATOS PERSONALES
+    
+    De acuerdo con la Ley 1581 de 2012 y el Decreto 1377 de 2013,
+    [Institución Educativa Name] informa que:
+    
+    1. Los datos personales recolectados serán utilizados exclusivamente
+       para fines educativos y administrativos propios de la institución.
+    
+    2. Tiene derecho a conocer, actualizar y rectificar sus datos personales.
+    
+    3. Puede revocar la autorización mediante solicitud escrita a:
+       [contact information]
+    
+    4. Los datos serán conservados durante el tiempo necesario para
+       cumplir las finalidades educativas y legales.
+    
+    Para más información, consulte nuestra política completa de tratamiento
+    de datos en [website].
+    """
+  }
+}
+```
+
+### Best Practices
+
+<Steps>
+  <Step title="Use Clear Language">
+    Write in simple Spanish accessible to parents and students. Avoid complex legal jargon.
+  </Step>
+  
+  <Step title="Include Required Elements">
+    - Purpose of data collection
+    - Types of data collected
+    - Rights of data subjects
+    - Contact information for inquiries
+    - Data retention period
+  </Step>
+  
+  <Step title="Display Prominently">
+    Show the habeas data statement:
+    - During enrollment
+    - On student/guardian portals
+    - In printed documentation
+    - Annual reminders
+  </Step>
+  
+  <Step title="Update Regularly">
+    Review and update annually or when:
+    - Data practices change
+    - New regulations are issued
+    - School contact information changes
+  </Step>
+</Steps>
+
+## Common Configuration Workflows
+
+### Initial School Setup
+
+```python
+# 1. Set basic institutional information
+PATCH /schools/me
+{
+  "name": "Institución Educativa San José",
+  "nit": "900123456-7",
+  "resolution": "002345 de 2020",
+  "settings": {
+    "pei_summary": "Brief PEI summary..."
+  }
+}
+
+# 2. Upload school logo
+POST /schools/media
+file: logo.png
+folder: logos
+
+# 3. Configure SIMAT
+PATCH /schools/me
+{
+  "settings": {
+    "simat_settings": {
+      "institution_code": "111001012345",
+      "enabled": true
+    }
+  }
+}
+
+# 4. Set habeas data statement
+PATCH /schools/me
+{
+  "settings": {
+    "habeas_data_text": "Complete habeas data text..."
+  }
+}
+```
+
+### Updating Branding
+
+```python
+# Upload new logo
+POST /schools/media
+file: new_logo.png
+folder: logos
+
+# Update brand colors
+PATCH /schools/me
+{
+  "settings": {
+    "branding_settings": {
+      "primary_color": "#1e3a8a",
+      "secondary_color": "#3b82f6"
+    }
+  }
+}
+```
+
+### Configuring Security
+
+```python
+PATCH /schools/me
+{
+  "settings": {
+    "security_settings": {
+      "password_policy": {
+        "min_length": 10,
+        "require_uppercase": true,
+        "require_numbers": true,
+        "require_special_chars": true
+      },
+      "session_timeout_minutes": 30,
+      "require_2fa_for_roles": ["rector", "coordinator", "secretary"]
+    }
+  }
+}
+```
+
+## Settings Inheritance
+
+Some settings apply hierarchically:
+
+1. **Platform Defaults**: Base configuration in code
+2. **School Settings**: Override defaults for specific institution
+3. **User Preferences**: Individual user customizations
+
+Example: Session timeout
+- Platform default: 60 minutes
+- School setting: 30 minutes (more secure)
+- Final value: 30 minutes (school setting wins)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="File Upload Fails">
+    Common causes:
+    - File exceeds size limit
+    - Unsupported file type
+    - Invalid folder name
+    - R2 connection issues
+    
+    Check the error message for specific details.
+  </Accordion>
+  
+  <Accordion title="Settings Not Saving">
+    Verify:
+    - User has `config:institution` permission
+    - JSON structure is valid
+    - Field names match schema exactly
+    - No conflicting values (e.g., negative numbers)
+  </Accordion>
+  
+  <Accordion title="Logo Not Displaying">
+    Ensure:
+    - File uploaded successfully to R2
+    - `logo_r2_object_key` set in branding settings
+    - R2 bucket is publicly accessible
+    - File exists at the specified key
+  </Accordion>
+  
+  <Accordion title="SIMAT Export Errors">
+    Check:
+    - Institution code is exactly 12 digits
+    - DANE code is valid
+    - Calendar type matches actual school calendar
+    - `enabled` flag is true
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="School Management" icon="building" href="/admin/school-management">
+    Create and manage schools
+  </Card>
+  <Card title="SIMAT Compliance" icon="file-export" href="/compliance/simat">
+    Colombian SIMAT integration guide
+  </Card>
+  <Card title="Habeas Data" icon="shield-check" href="/compliance/habeas-data">
+    Data protection compliance
+  </Card>
+  <Card title="Cloudflare R2" icon="cloud" href="/architecture/infrastructure/cloudflare-r2">
+    File storage architecture
+  </Card>
+</CardGroup>

@@ -1,0 +1,325 @@
+---
+title: "Attendance"
+description: "Track and manage student attendance records"
+---
+
+The attendance API allows you to record and retrieve student attendance for specific course offerings. Each attendance record captures whether a student was present, absent, late, or excused for a particular date.
+
+## Attendance Records
+
+Attendance records track daily attendance for students in specific courses.
+
+### Create Attendance Record
+
+<ParamField body="course_offering_id" type="uuid" required>
+  ID of the course offering
+</ParamField>
+
+<ParamField body="teacher_assignment_id" type="uuid" required>
+  ID of the teacher assignment who recorded the attendance
+</ParamField>
+
+<ParamField body="course_enrollment_id" type="uuid" required>
+  ID of the course enrollment
+</ParamField>
+
+<ParamField body="student_id" type="uuid" required>
+  ID of the student
+</ParamField>
+
+<ParamField body="attendance_date" type="date" required>
+  Date of the attendance (format: YYYY-MM-DD)
+</ParamField>
+
+<ParamField body="status" type="string" required>
+  Attendance status: `present`, `absent`, `late`, or `excused`
+</ParamField>
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the attendance record
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  ID of the school
+</ResponseField>
+
+<ResponseField name="course_offering_id" type="uuid">
+  ID of the course offering
+</ResponseField>
+
+<ResponseField name="teacher_assignment_id" type="uuid">
+  ID of the teacher assignment
+</ResponseField>
+
+<ResponseField name="course_enrollment_id" type="uuid">
+  ID of the course enrollment
+</ResponseField>
+
+<ResponseField name="student_id" type="uuid">
+  ID of the student
+</ResponseField>
+
+<ResponseField name="attendance_date" type="date">
+  Date of attendance
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Attendance status: `present`, `absent`, `late`, or `excused`
+</ResponseField>
+
+<ResponseField name="recorded_at" type="datetime">
+  Timestamp when the attendance was recorded
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/academic/attendance" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "attendance_date": "2024-03-15",
+    "status": "present"
+  }'
+```
+
+```python Python
+import requests
+from datetime import date
+
+response = requests.post(
+    "https://api.athena-erp.com/academic/attendance",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+        "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+        "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+        "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+        "attendance_date": "2024-03-15",
+        "status": "present"
+    }
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": "e5f6a7b8-c9d0-4e1f-b2c3-d4e5f6a7b8c9",
+  "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+  "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+  "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+  "attendance_date": "2024-03-15",
+  "status": "present",
+  "recorded_at": "2024-03-15T08:30:00Z"
+}
+```
+</ResponseExample>
+
+### List Attendance Records
+
+Retrieve attendance records with optional filters for specific students or course offerings.
+
+<ParamField query="student_id" type="uuid">
+  Filter by student ID to get all attendance records for a specific student
+</ParamField>
+
+<ParamField query="course_offering_id" type="uuid">
+  Filter by course offering ID to get attendance for a specific course
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/attendance?student_id=d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/attendance",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8"}
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.athena-erp.com/academic/attendance?student_id=d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8',
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+const data = await response.json();
+console.log(data);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "e5f6a7b8-c9d0-4e1f-b2c3-d4e5f6a7b8c9",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "attendance_date": "2024-03-15",
+    "status": "present",
+    "recorded_at": "2024-03-15T08:30:00Z"
+  },
+  {
+    "id": "f6a7b8c9-d0e1-4f2a-c3d4-e5f6a7b8c9d0",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "attendance_date": "2024-03-14",
+    "status": "late",
+    "recorded_at": "2024-03-14T08:35:00Z"
+  },
+  {
+    "id": "a7b8c9d0-e1f2-4a3b-d4e5-f6a7b8c9d0e1",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "teacher_assignment_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+    "course_enrollment_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+    "student_id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+    "attendance_date": "2024-03-13",
+    "status": "absent",
+    "recorded_at": "2024-03-13T08:30:00Z"
+  }
+]
+```
+</ResponseExample>
+
+## Attendance Status Types
+
+The attendance system supports four status types:
+
+<ResponseField name="present" type="status">
+  Student attended the class on time
+</ResponseField>
+
+<ResponseField name="absent" type="status">
+  Student did not attend the class
+</ResponseField>
+
+<ResponseField name="late" type="status">
+  Student arrived late to class
+</ResponseField>
+
+<ResponseField name="excused" type="status">
+  Student's absence was excused (medical, family emergency, etc.)
+</ResponseField>
+
+## Filtering by Course
+
+To get attendance records for an entire course offering:
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/attendance?course_offering_id=a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/attendance",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"course_offering_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"}
+)
+print(response.json())
+```
+</RequestExample>
+
+This will return all attendance records for all students enrolled in that course offering, ordered by date (most recent first).
+
+## Use Cases
+
+### Daily Attendance Taking
+
+Teachers can record attendance at the beginning of each class:
+
+```python
+import requests
+from datetime import date
+
+# Record attendance for multiple students
+students = [
+    {"student_id": "student-uuid-1", "status": "present"},
+    {"student_id": "student-uuid-2", "status": "late"},
+    {"student_id": "student-uuid-3", "status": "absent"},
+]
+
+for student in students:
+    response = requests.post(
+        "https://api.athena-erp.com/academic/attendance",
+        headers={"Authorization": "Bearer YOUR_TOKEN"},
+        json={
+            "course_offering_id": "course-uuid",
+            "teacher_assignment_id": "teacher-uuid",
+            "course_enrollment_id": f"enrollment-{student['student_id']}",
+            "student_id": student["student_id"],
+            "attendance_date": str(date.today()),
+            "status": student["status"]
+        }
+    )
+    print(f"Recorded {student['status']} for {student['student_id']}")
+```
+
+### Attendance Reports
+
+Generate attendance reports for specific students:
+
+```python
+import requests
+
+# Get all attendance for a student
+response = requests.get(
+    "https://api.athena-erp.com/academic/attendance",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"student_id": "student-uuid"}
+)
+
+attendance_records = response.json()
+
+# Calculate statistics
+total = len(attendance_records)
+present = sum(1 for r in attendance_records if r["status"] == "present")
+absent = sum(1 for r in attendance_records if r["status"] == "absent")
+late = sum(1 for r in attendance_records if r["status"] == "late")
+excused = sum(1 for r in attendance_records if r["status"] == "excused")
+
+print(f"Total records: {total}")
+print(f"Present: {present} ({present/total*100:.1f}%)")
+print(f"Absent: {absent} ({absent/total*100:.1f}%)")
+print(f"Late: {late} ({late/total*100:.1f}%)")
+print(f"Excused: {excused} ({excused/total*100:.1f}%)")
+```
+
+## Permissions
+
+- **Create attendance**: Requires `write:attendance` or `write:all` permission
+- **List attendance**: Requires `read:attendance` or `read:all` permission
+
+## Best Practices
+
+1. **Record attendance daily**: Consistent daily attendance tracking helps identify patterns early
+2. **Use appropriate status**: Choose the correct status type to maintain accurate records
+3. **Automate when possible**: Integrate with your school's check-in systems to automate attendance recording
+4. **Review regularly**: Teachers and administrators should review attendance reports regularly to identify students who need support

@@ -1,0 +1,442 @@
+---
+title: "Routing Architecture"
+description: "Client-side routing with react-router-dom v7 in Athena ERP"
+---
+
+## Overview
+
+Athena ERP uses **react-router-dom v7.13.1** for client-side routing. The routing architecture implements role-based access control, protected routes, and dynamic navigation based on user permissions.
+
+## Router Setup
+
+### Application Root
+
+The router is initialized in the root `App.tsx` component:
+
+```tsx title="src/App.tsx"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useAuthStore } from "./store/authStore";
+
+export default function App() {
+  const { isAuthenticated } = useAuthStore();
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    // Initialize auth state from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        // Load user profile and login
+      } else {
+        logout();
+      }
+      setIsInitializing(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (isInitializing) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <Router>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
+        />
+        
+        {/* Protected Routes */}
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['superadmin']}><Admin /></ProtectedRoute>} />
+        <Route path="/matriculas" element={<ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}><Matriculas /></ProtectedRoute>} />
+        <Route path="/estudiantes" element={<ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}><Estudiantes /></ProtectedRoute>} />
+        <Route path="/estudiantes/:id" element={<ProtectedRoute><EstudianteDetalle /></ProtectedRoute>} />
+        <Route path="/academico" element={<ProtectedRoute><Academico /></ProtectedRoute>} />
+        <Route path="/convivencia" element={<ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}><Convivencia /></ProtectedRoute>} />
+        <Route path="/comunicaciones" element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} />
+        <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['rector', 'superadmin']}><Configuracion /></ProtectedRoute>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
+  );
+}
+```
+
+## Route Protection
+
+### ProtectedRoute Component
+
+The `ProtectedRoute` wrapper implements authentication and authorization:
+
+```tsx title="src/components/ProtectedRoute.tsx"
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuthStore, Role } from '../store/authStore';
+import { ReactNode } from 'react';
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: Role[];
+}
+
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
+
+  // Check authentication
+  if (!isAuthenticated) {
+    // Redirect to login and save attempted location
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check authorization
+  if (allowedRoles && user) {
+    const hasAccess = allowedRoles.some(role => user.roles.includes(role));
+    if (!hasAccess) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  return <>{children}</>;
+}
+```
+
+**Key features:**
+- **Authentication check**: Redirects unauthenticated users to `/login`
+- **Authorization check**: Validates user roles against `allowedRoles`
+- **Location preservation**: Saves attempted route in location state for post-login redirect
+- **Fallback redirect**: Unauthorized users redirect to home page
+
+## Route Structure
+
+### Public Routes
+
+```tsx
+<Route path="/login" element={<Login />} />
+<Route path="/reset-password" element={<ResetPassword />} />
+```
+
+Public routes accessible without authentication.
+
+### Protected Routes
+
+#### Dashboard (All Roles)
+
+```tsx
+<Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+```
+
+#### Admin Panel (Superadmin Only)
+
+```tsx
+<Route 
+  path="/admin" 
+  element={
+    <ProtectedRoute allowedRoles={['superadmin']}>
+      <Admin />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+#### Enrollments (Administrative Staff)
+
+```tsx
+<Route 
+  path="/matriculas" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}>
+      <Matriculas />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/matriculas/:id" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}>
+      <MatriculaDetalle />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+#### Students
+
+```tsx
+<Route 
+  path="/estudiantes" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}>
+      <Estudiantes />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/estudiantes/:id" 
+  element={<ProtectedRoute><EstudianteDetalle /></ProtectedRoute>} 
+/>
+<Route 
+  path="/estudiantes/:id/diario" 
+  element={<ProtectedRoute><DiarioCampo /></ProtectedRoute>} 
+/>
+```
+
+#### Academic Module
+
+```tsx
+<Route 
+  path="/academico" 
+  element={<ProtectedRoute><Academico /></ProtectedRoute>} 
+/>
+```
+
+#### Student Conduct
+
+```tsx
+<Route 
+  path="/convivencia" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}>
+      <Convivencia />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/convivencia/debido-proceso/:id" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'coordinator', 'secretary', 'superadmin']}>
+      <DebidoProceso />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+#### Communications
+
+```tsx
+<Route 
+  path="/comunicaciones" 
+  element={<ProtectedRoute><Comunicaciones /></ProtectedRoute>} 
+/>
+```
+
+#### Settings (Rector & Superadmin)
+
+```tsx
+<Route 
+  path="/configuracion" 
+  element={
+    <ProtectedRoute allowedRoles={['rector', 'superadmin']}>
+      <Configuracion />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+### 404 Route
+
+```tsx
+<Route path="*" element={<NotFound />} />
+```
+
+## Navigation Components
+
+### Layout Navigation
+
+The `Layout` component renders navigation based on user roles:
+
+```tsx title="src/components/Layout.tsx"
+const navItems = [
+  { name: "Inicio", path: "/", icon: Home, roles: ['rector', 'coordinator', 'secretary', 'teacher', 'student', 'superadmin'] },
+  { name: "Panel Admin", path: "/admin", icon: Building2, roles: ['superadmin'] },
+  { name: "Matrículas", path: "/matriculas", icon: FileText, roles: ['rector', 'coordinator', 'secretary', 'superadmin'] },
+  { name: "Estudiantes", path: "/estudiantes", icon: Users, roles: ['rector', 'coordinator', 'secretary', 'student', 'superadmin'] },
+  { name: "Académico", path: "/academico", icon: BookOpen, roles: ['rector', 'coordinator', 'secretary', 'teacher', 'superadmin'] },
+  { name: "Convivencia", path: "/convivencia", icon: ShieldAlert, roles: ['rector', 'coordinator', 'secretary', 'superadmin'] },
+  { name: "Comunicaciones", path: "/comunicaciones", icon: MessageSquare, roles: ['rector', 'coordinator', 'secretary', 'teacher', 'student', 'superadmin'] },
+  { name: "Configuración", path: "/configuracion", icon: Settings, roles: ['rector', 'superadmin'] },
+];
+
+export function Layout({ children, title, subtitle }: LayoutProps) {
+  const location = useLocation();
+  const { user } = useAuthStore();
+
+  // Filter navigation items by user roles
+  const filteredNavItems = navItems.filter(item => {
+    if (!item.roles) return true;
+    if (!user?.roles) return false;
+    return item.roles.some(role => user.roles.includes(role as any));
+  });
+
+  return (
+    <div className="flex h-screen">
+      <aside className="sidebar">
+        <nav>
+          {filteredNavItems.map((item) => {
+            // Special case for student viewing their own profile
+            let itemPath = item.path;
+            if (item.name === "Estudiantes" && user?.roles.includes('student')) {
+              itemPath = `/estudiantes/${user.id}`;
+            }
+            
+            const isActive = location.pathname === itemPath || 
+                           (itemPath !== "/" && location.pathname.startsWith(itemPath));
+            
+            return (
+              <Link
+                key={item.name}
+                to={itemPath}
+                className={cn("nav-link", isActive && "active")}
+              >
+                <item.icon />
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+```
+
+**Dynamic navigation features:**
+- Filters menu items based on user roles
+- Active route highlighting
+- Student-specific route redirection (students see only their profile)
+- Mobile-responsive drawer navigation
+
+## Navigation Hooks
+
+### useNavigate
+
+Programmatic navigation:
+
+```tsx
+import { useNavigate } from 'react-router-dom';
+
+function MyComponent() {
+  const navigate = useNavigate();
+
+  const handleSuccess = () => {
+    navigate('/estudiantes');
+  };
+
+  const handleCancel = () => {
+    navigate(-1); // Go back
+  };
+}
+```
+
+### useLocation
+
+Access current location state:
+
+```tsx
+import { useLocation } from 'react-router-dom';
+
+function Login() {
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
+
+  const handleLogin = async () => {
+    await loginUser();
+    navigate(from, { replace: true }); // Redirect to attempted route
+  };
+}
+```
+
+### useParams
+
+Extract URL parameters:
+
+```tsx
+import { useParams } from 'react-router-dom';
+
+function EstudianteDetalle() {
+  const { id } = useParams<{ id: string }>();
+  const { data: student } = useStudentDetail(id!);
+
+  return <div>{student?.full_name}</div>;
+}
+```
+
+## Role-Based Access Control
+
+### User Roles
+
+```typescript title="src/store/authStore.ts"
+export type Role =
+  | 'rector'
+  | 'coordinator'
+  | 'secretary'
+  | 'teacher'
+  | 'student'
+  | 'acudiente'
+  | 'superadmin';
+```
+
+### Permission Matrix
+
+| Route | Rector | Coordinator | Secretary | Teacher | Student | Acudiente | Superadmin |
+|-------|--------|-------------|-----------|---------|---------|-----------|------------|
+| `/` (Dashboard) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/admin` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `/matriculas` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| `/estudiantes` | ✅ | ✅ | ✅ | ❌ | ✅* | ❌ | ✅ |
+| `/academico` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| `/convivencia` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| `/comunicaciones` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| `/configuracion` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+*Students can only access their own profile: `/estudiantes/:id`
+
+## Password Recovery Flow
+
+```tsx title="src/App.tsx"
+useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      // Redirect to reset password page
+      window.location.pathname = '/reset-password';
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
+```
+
+Supabase triggers `PASSWORD_RECOVERY` event when user clicks reset link in email, automatically redirecting to `/reset-password`.
+
+## Best Practices
+
+### Route Organization
+
+1. **Group related routes**: Keep parent/child routes together
+2. **Use nested routes**: For layouts and shared components
+3. **Explicit role checking**: Always define `allowedRoles` for sensitive routes
+4. **Fallback routes**: Always include 404 handler
+
+### Security
+
+1. **Never trust client-side checks**: Always validate permissions on backend
+2. **Redirect on auth failure**: Send users to login, not error pages
+3. **Preserve navigation state**: Use location state to redirect after login
+4. **Validate dynamic routes**: Check user permissions for `:id` routes
+
+### Performance
+
+1. **Lazy load routes**: Use `React.lazy()` for code-splitting large pages
+2. **Prefetch data**: Load data in route loaders for instant navigation
+3. **Optimize redirects**: Use `replace` prop to avoid polluting history
+
+## Related Documentation
+
+- [React Architecture](/architecture/frontend/react)
+- [State Management](/architecture/frontend/state-management)
+- [Authentication](/api/auth/overview)

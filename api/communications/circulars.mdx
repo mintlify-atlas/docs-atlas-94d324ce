@@ -1,0 +1,426 @@
+---
+title: "Circulars"
+description: "Manage and distribute PDF circulars to school community"
+---
+
+## Overview
+
+Circulars allow schools to distribute official communications, announcements, and documents to teachers, parents, and other stakeholders. Each circular is a PDF document that can be targeted to specific audiences.
+
+## List Circulars
+
+<api-endpoint method="GET" path="/communications/circulars" />
+
+Retrieve all circulars visible to the current user. Users with `write:communications` permission see all circulars; others see only circulars that have been sent and are addressed to them.
+
+### Query Parameters
+
+<param-field path="status" type="string" optional>
+  Filter by circular status: `draft`, `scheduled`, or `sent`
+</param-field>
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the circular
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  ID of the school
+</response-field>
+
+<response-field name="created_by" type="uuid">
+  User ID of the person who created the circular
+</response-field>
+
+<response-field name="title" type="string">
+  Title of the circular
+</response-field>
+
+<response-field name="file_name" type="string">
+  Original filename of the uploaded PDF
+</response-field>
+
+<response-field name="r2_object_key" type="string">
+  Internal storage key for the PDF file
+</response-field>
+
+<response-field name="status" type="string">
+  Status: `draft`, `scheduled`, or `sent`
+</response-field>
+
+<response-field name="audience_type" type="string">
+  Type of audience: `all_teachers`, `specific_teachers`, `all_parents`, etc.
+</response-field>
+
+<response-field name="audience_spec" type="array">
+  Specific audience members (for targeted circulars)
+</response-field>
+
+<response-field name="recipient_count" type="integer">
+  Total number of recipients
+</response-field>
+
+<response-field name="opened_count" type="integer">
+  Number of recipients who have opened the circular
+</response-field>
+
+<response-field name="channel" type="string">
+  Distribution channel: `app`, `email`, or `both`
+</response-field>
+
+<response-field name="scheduled_at" type="datetime">
+  Scheduled send time (if applicable)
+</response-field>
+
+<response-field name="sent_at" type="datetime">
+  Actual send time
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  Creation timestamp
+</response-field>
+
+<response-field name="updated_at" type="datetime">
+  Last update timestamp
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/communications/circulars?status=sent" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "999ijk00-lmm1-2345-6789-012345678lmn",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "created_by": "456e7890-a12b-34c5-d678-901234567def",
+    "title": "Circular informativa - Jornada pedagógica marzo",
+    "file_name": "circular_jornada_pedagogica.pdf",
+    "r2_object_key": "school-uuid/communications/circulars/circular_jornada_abc123.pdf",
+    "status": "sent",
+    "audience_type": "all_teachers",
+    "audience_spec": [],
+    "recipient_count": 45,
+    "opened_count": 38,
+    "channel": "app",
+    "scheduled_at": null,
+    "sent_at": "2026-03-08T08:00:00Z",
+    "created_at": "2026-03-07T16:30:00Z",
+    "updated_at": "2026-03-08T08:00:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Create Circular
+
+<api-endpoint method="POST" path="/communications/circulars" />
+
+Create a new circular by uploading a PDF document. This endpoint uses multipart/form-data encoding.
+
+### Request Body (multipart/form-data)
+
+<param-field path="title" type="string" required>
+  Title of the circular
+</param-field>
+
+<param-field path="file" type="file" required>
+  PDF file to upload (max 25 MB)
+</param-field>
+
+<param-field path="audience_type" type="string" required>
+  Type of audience:
+  - `all_teachers` - All teaching staff
+  - `specific_teachers` - Specific teachers (provide IDs in audience_spec)
+  - `all_parents` - All parents/guardians
+  - `specific_parents` - Specific parents
+  - `all_staff` - All staff members
+</param-field>
+
+<param-field path="audience_spec" type="string" default="[]">
+  JSON array of specific recipients (for `specific_teachers` or `specific_parents`).
+  Format: `[{"user_id": "uuid1"}, {"user_id": "uuid2"}]`
+</param-field>
+
+<param-field path="status" type="string" default="draft">
+  Initial status: `draft`, `scheduled`, or `sent`
+</param-field>
+
+<param-field path="channel" type="string" default="app">
+  Distribution channel: `app`, `email`, or `both`
+</param-field>
+
+<param-field path="scheduled_at" type="datetime" optional>
+  Schedule for future delivery (ISO 8601 format)
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/communications/circulars" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -F "title=Circular informativa - Jornada pedagógica marzo" \
+  -F "file=@/path/to/circular.pdf" \
+  -F "audience_type=all_teachers" \
+  -F "status=sent" \
+  -F "channel=app"
+```
+</request-example>
+
+<request-example>
+```bash
+# Send to specific teachers
+curl -X POST "https://api.athena-erp.com/communications/circulars" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -F "title=Convocatoria reunión de área" \
+  -F "file=@/path/to/reunion.pdf" \
+  -F "audience_type=specific_teachers" \
+  -F 'audience_spec=[{"user_id":"user-uuid-1"},{"user_id":"user-uuid-2"}]' \
+  -F "status=sent" \
+  -F "channel=app"
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "111jkl11-mmn2-3456-7890-123456789mno",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "created_by": "456e7890-a12b-34c5-d678-901234567def",
+  "title": "Circular informativa - Jornada pedagógica marzo",
+  "file_name": "circular.pdf",
+  "r2_object_key": "school-uuid/communications/circulars/circular_xyz456.pdf",
+  "status": "sent",
+  "audience_type": "all_teachers",
+  "audience_spec": [],
+  "recipient_count": 45,
+  "opened_count": 0,
+  "channel": "app",
+  "scheduled_at": null,
+  "sent_at": "2026-03-10T10:30:00Z",
+  "created_at": "2026-03-10T10:30:00Z",
+  "updated_at": "2026-03-10T10:30:00Z"
+}
+```
+</response-example>
+
+---
+
+## Get Circular
+
+<api-endpoint method="GET" path="/communications/circulars/{circular_id}" />
+
+Retrieve details about a specific circular.
+
+### Path Parameters
+
+<param-field path="circular_id" type="uuid" required>
+  Unique identifier of the circular
+</param-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/communications/circulars/999ijk00-lmm1-2345-6789-012345678lmn" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+---
+
+## Get Circular Content
+
+<api-endpoint method="GET" path="/communications/circulars/{circular_id}/content" />
+
+Download or view the PDF content of a circular.
+
+### Path Parameters
+
+<param-field path="circular_id" type="uuid" required>
+  Unique identifier of the circular
+</param-field>
+
+### Query Parameters
+
+<param-field path="mode" type="string" default="inline">
+  Delivery mode:
+  - `inline` - Display in browser
+  - `download` - Force download
+</param-field>
+
+### Response
+
+Returns the PDF file with appropriate headers for viewing or downloading.
+
+<request-example>
+```bash
+# View in browser
+curl -X GET "https://api.athena-erp.com/communications/circulars/999ijk00-lmm1-2345-6789-012345678lmn/content?mode=inline" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  --output circular.pdf
+
+# Force download
+curl -X GET "https://api.athena-erp.com/communications/circulars/999ijk00-lmm1-2345-6789-012345678lmn/content?mode=download" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  --output circular.pdf
+```
+</request-example>
+
+---
+
+## List Recipients
+
+<api-endpoint method="GET" path="/communications/circulars/{circular_id}/recipients" />
+
+Get a list of all recipients for a circular, including delivery and read status.
+
+### Path Parameters
+
+<param-field path="circular_id" type="uuid" required>
+  Unique identifier of the circular
+</param-field>
+
+### Response
+
+<response-field name="id" type="uuid">
+  Recipient record ID
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  School ID
+</response-field>
+
+<response-field name="circular_id" type="uuid">
+  Circular ID
+</response-field>
+
+<response-field name="user_id" type="uuid">
+  Recipient user ID
+</response-field>
+
+<response-field name="delivered_at" type="datetime">
+  When the circular was delivered
+</response-field>
+
+<response-field name="opened_at" type="datetime">
+  When the recipient opened the circular
+</response-field>
+
+<response-field name="channel" type="string">
+  Delivery channel used
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  Record creation time
+</response-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/communications/circulars/999ijk00-lmm1-2345-6789-012345678lmn/recipients" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "222klm22-nno3-4567-8901-234567890nop",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "circular_id": "999ijk00-lmm1-2345-6789-012345678lmn",
+    "user_id": "333lmn33-oop4-5678-9012-345678901opq",
+    "delivered_at": "2026-03-08T08:00:00Z",
+    "opened_at": "2026-03-08T09:15:00Z",
+    "channel": "app",
+    "created_at": "2026-03-08T08:00:00Z"
+  },
+  {
+    "id": "444mno44-ppq5-6789-0123-456789012pqr",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "circular_id": "999ijk00-lmm1-2345-6789-012345678lmn",
+    "user_id": "555nop55-qqr6-7890-1234-567890123qrs",
+    "delivered_at": "2026-03-08T08:00:00Z",
+    "opened_at": null,
+    "channel": "app",
+    "created_at": "2026-03-08T08:00:00Z"
+  }
+]
+```
+</response-example>
+
+---
+
+## Mark as Opened
+
+<api-endpoint method="POST" path="/communications/circulars/{circular_id}/mark-opened" />
+
+Mark a circular as opened by the current user. This is typically called automatically when a user views a circular.
+
+### Path Parameters
+
+<param-field path="circular_id" type="uuid" required>
+  Unique identifier of the circular
+</param-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/communications/circulars/999ijk00-lmm1-2345-6789-012345678lmn/mark-opened" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "222klm22-nno3-4567-8901-234567890nop",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "circular_id": "999ijk00-lmm1-2345-6789-012345678lmn",
+  "user_id": "333lmn33-oop4-5678-9012-345678901opq",
+  "delivered_at": "2026-03-08T08:00:00Z",
+  "opened_at": "2026-03-10T11:45:00Z",
+  "channel": "app",
+  "created_at": "2026-03-08T08:00:00Z"
+}
+```
+</response-example>
+
+## File Requirements
+
+<info>
+**PDF Only**: Circulars must be PDF files. Other formats are not supported.
+</info>
+
+<warning>
+**File Size Limit**: Maximum file size is 25 MB. Larger files will be rejected.
+</warning>
+
+## Permissions
+
+Circular endpoints require the following permissions:
+- `write:communications` - Create and manage circulars (admin)
+- `read:communications` - View circulars addressed to the user
+- `read:all` - View all circulars (admin)
+- `write:all` - Full administrative access
+
+## Audience Visibility Rules
+
+<tip>
+**Automatic Filtering**: Non-admin users only see circulars that:
+1. Have been sent (status = `sent`)
+2. Are addressed to "all" or specifically include their user ID
+
+Admins with `write:communications` can see all circulars regardless of status or audience.
+</tip>

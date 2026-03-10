@@ -1,0 +1,226 @@
+---
+title: FastAPI Application Structure
+description: Understanding Athena's FastAPI architecture, middleware, and routing patterns
+---
+
+## Overview
+
+Athena ERP uses **FastAPI** as its web framework, providing a modern, high-performance Python backend with automatic API documentation and type validation.
+
+## Application Setup
+
+The main application is defined in `app/main.py`:
+
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(
+    title="Athena ERP API",
+    description="API para el sistema de gestión escolar Athena — Colombia",
+    version="0.1.0",
+    docs_url="/docs" if settings.is_dev else None,
+    redoc_url="/redoc" if settings.is_dev else None,
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+)
+```
+
+### Key Configuration
+
+- **Interactive docs** (`/docs` and `/redoc`) are only enabled in development
+- **OpenAPI schema** is always available at `/openapi.json`
+- **Lifespan context manager** handles startup/shutdown events
+
+## Lifespan Management
+
+The `lifespan` context manager handles application lifecycle:
+
+```python
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize external services
+    yield
+    # Shutdown: Cleanup resources
+```
+
+<Info>
+Currently minimal, but this is where you would initialize database connections, Redis pools, or external service clients.
+</Info>
+
+## Middleware
+
+### CORS Configuration
+
+CORS middleware is configured to allow frontend requests:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+Origins are configured via environment variables:
+- Development: `http://localhost:3000`, `http://localhost:5173`
+- Production: Specific domain whitelist
+
+<Warning>
+In production, always specify exact origins instead of using `["*"]`.
+</Warning>
+
+## Router Organization
+
+Routers are modular and organized by domain:
+
+```python
+app.include_router(auth.router)          # /auth
+app.include_router(schools.router)       # /schools
+app.include_router(students.router)      # /students
+app.include_router(enrollments.router)   # /enrollments
+app.include_router(admin.router)         # /admin
+app.include_router(academic.router)      # /academic
+app.include_router(discipline.router)    # /discipline
+app.include_router(communications.router) # /communications
+```
+
+### Router Structure Example
+
+Each router follows a consistent pattern:
+
+```python
+from fastapi import APIRouter, Depends
+from app.deps import AuthContext, require_permissions
+
+router = APIRouter(prefix="/schools", tags=["schools"])
+
+@router.get("/me", response_model=SchoolResponse)
+async def get_my_school(
+    tenant: School = Depends(get_current_tenant),
+):
+    return serialize_school(tenant)
+
+@router.patch("/me", response_model=SchoolResponse)
+async def update_my_school(
+    body: SchoolUpdate,
+    tenant: School = Depends(get_current_tenant),
+    _: AuthContext = Depends(require_permissions("config:institution")),
+    db: AsyncSession = Depends(get_db),
+):
+    # Update logic
+    ...
+```
+
+## Dependency Injection
+
+FastAPI's dependency injection system is used extensively:
+
+### Common Dependencies
+
+| Dependency | Purpose | Location |
+|------------|---------|----------|
+| `get_db()` | Provides async database session | `app/database.py:25` |
+| `get_auth_context()` | Extracts user, roles, and school context | `app/deps.py:76` |
+| `get_current_tenant()` | Ensures school context exists | `app/deps.py:142` |
+| `require_permissions()` | Permission-based access control | `app/deps.py:153` |
+
+### Usage Pattern
+
+```python
+@router.post("/students")
+async def create_student(
+    body: StudentCreate,
+    auth: AuthContext = Depends(require_permissions("write:enrollment")),
+    tenant: School = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    student = Student(
+        school_id=tenant.id,
+        **body.model_dump()
+    )
+    db.add(student)
+    await db.flush()
+    return student
+```
+
+## Health Check Endpoint
+
+A simple health check for infrastructure monitoring:
+
+```python
+@app.get("/health", tags=["health"], include_in_schema=False)
+async def health_check():
+    return {"status": "ok", "version": "0.1.0"}
+```
+
+<Info>
+`include_in_schema=False` keeps this endpoint out of OpenAPI documentation.
+</Info>
+
+## Configuration Management
+
+Settings are managed via Pydantic BaseSettings in `app/config.py`:
+
+```python
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+    
+    environment: Literal["development", "staging", "production"]
+    database_url: str
+    jwt_secret: str
+    cors_origins: list[str]
+    # ... more settings
+    
+    @property
+    def is_dev(self) -> bool:
+        return self.environment == "development"
+```
+
+### Environment Variables
+
+Key environment variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` - Secret key for token signing
+- `CORS_ORIGINS` - Comma-separated list of allowed origins
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` - Authentication provider
+
+## Request/Response Flow
+
+1. **Request arrives** → CORS middleware validates origin
+2. **Route matched** → FastAPI validates request body against Pydantic schema
+3. **Dependencies injected** → Auth context, DB session, permissions checked
+4. **Handler executes** → Business logic runs
+5. **Response serialized** → Pydantic response model ensures type safety
+6. **JSON returned** → Client receives validated response
+
+## Error Handling
+
+HTTPException is used for controlled errors:
+
+```python
+from fastapi import HTTPException, status
+
+if not user.is_active:
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Usuario inactivo",
+    )
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SQLAlchemy Models" icon="database" href="./sqlalchemy">
+    Learn about database models and async patterns
+  </Card>
+  <Card title="Permissions System" icon="shield" href="./permissions">
+    Understand role-based access control
+  </Card>
+</CardGroup>

@@ -1,0 +1,395 @@
+---
+title: "Subjects"
+description: "Manage subject catalog and academic areas"
+---
+
+The subjects API allows you to manage the subject catalog and academic areas for your school. Subjects can be organized into academic areas and include details like codes, names, and status.
+
+## Academic Areas
+
+Academic areas are used to organize subjects into broader categories (e.g., Sciences, Mathematics, Languages).
+
+### List Academic Areas
+
+<ParamField query="tenant" type="School" required>
+  Current tenant school (automatically injected)
+</ParamField>
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the academic area
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  ID of the school this area belongs to
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the academic area
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Status of the area: `active` or `inactive`
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Timestamp when the area was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Timestamp when the area was last updated
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/areas" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/areas",
+    headers={"Authorization": "Bearer YOUR_TOKEN"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "name": "Sciences",
+    "status": "active",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "name": "Mathematics",
+    "status": "active",
+    "created_at": "2024-01-15T10:32:00Z",
+    "updated_at": "2024-01-15T10:32:00Z"
+  }
+]
+```
+</ResponseExample>
+
+### Create Academic Area
+
+<ParamField body="name" type="string" required>
+  Name of the academic area
+</ParamField>
+
+<ParamField body="status" type="string" default="active">
+  Status of the area: `active` or `inactive`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/academic/areas" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Languages",
+    "status": "active"
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.athena-erp.com/academic/areas",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "name": "Languages",
+        "status": "active"
+    }
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "name": "Languages",
+  "status": "active",
+  "created_at": "2024-01-20T14:25:00Z",
+  "updated_at": "2024-01-20T14:25:00Z"
+}
+```
+</ResponseExample>
+
+### Update Academic Area
+
+<ParamField path="area_id" type="uuid" required>
+  ID of the academic area to update
+</ParamField>
+
+<ParamField body="name" type="string">
+  New name for the academic area
+</ParamField>
+
+<ParamField body="status" type="string">
+  New status: `active` or `inactive`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://api.athena-erp.com/academic/areas/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "inactive"
+  }'
+```
+</RequestExample>
+
+### Delete Academic Area
+
+<ParamField path="area_id" type="uuid" required>
+  ID of the academic area to delete
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://api.athena-erp.com/academic/areas/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204 - No Content
+```
+</ResponseExample>
+
+## Subject Catalog
+
+The subject catalog contains all subjects that can be taught at your school.
+
+### List Subjects
+
+<ParamField query="academic_area_id" type="uuid">
+  Filter subjects by academic area
+</ParamField>
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the subject
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  ID of the school this subject belongs to
+</ResponseField>
+
+<ResponseField name="academic_area_id" type="uuid">
+  ID of the academic area this subject belongs to
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Subject code (e.g., "MATH101")
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Full name of the subject
+</ResponseField>
+
+<ResponseField name="short_name" type="string">
+  Abbreviated name for the subject
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Status: `active` or `inactive`
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Timestamp when created
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Timestamp when last updated
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.athena-erp.com/academic/subjects?academic_area_id=550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.athena-erp.com/academic/subjects",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    params={"academic_area_id": "550e8400-e29b-41d4-a716-446655440000"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "academic_area_id": "550e8400-e29b-41d4-a716-446655440000",
+    "code": "BIO101",
+    "name": "Biology I",
+    "short_name": "Bio I",
+    "status": "active",
+    "created_at": "2024-01-15T11:00:00Z",
+    "updated_at": "2024-01-15T11:00:00Z"
+  },
+  {
+    "id": "c9bf9e57-1685-4c89-bafb-ff5af830be8a",
+    "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "academic_area_id": "550e8400-e29b-41d4-a716-446655440000",
+    "code": "CHEM101",
+    "name": "Chemistry I",
+    "short_name": "Chem I",
+    "status": "active",
+    "created_at": "2024-01-15T11:05:00Z",
+    "updated_at": "2024-01-15T11:05:00Z"
+  }
+]
+```
+</ResponseExample>
+
+### Create Subject
+
+<ParamField body="code" type="string" required>
+  Subject code (e.g., "MATH101")
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Full name of the subject
+</ParamField>
+
+<ParamField body="academic_area_id" type="uuid">
+  ID of the academic area this subject belongs to
+</ParamField>
+
+<ParamField body="short_name" type="string">
+  Abbreviated name for the subject
+</ParamField>
+
+<ParamField body="status" type="string" default="active">
+  Status: `active` or `inactive`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/academic/subjects" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "PHYS101",
+    "name": "Physics I",
+    "short_name": "Phys I",
+    "academic_area_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "active"
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.athena-erp.com/academic/subjects",
+    headers={"Authorization": "Bearer YOUR_TOKEN"},
+    json={
+        "code": "PHYS101",
+        "name": "Physics I",
+        "short_name": "Phys I",
+        "academic_area_id": "550e8400-e29b-41d4-a716-446655440000",
+        "status": "active"
+    }
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": "d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8",
+  "school_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "academic_area_id": "550e8400-e29b-41d4-a716-446655440000",
+  "code": "PHYS101",
+  "name": "Physics I",
+  "short_name": "Phys I",
+  "status": "active",
+  "created_at": "2024-01-20T15:30:00Z",
+  "updated_at": "2024-01-20T15:30:00Z"
+}
+```
+</ResponseExample>
+
+### Update Subject
+
+<ParamField path="subject_id" type="uuid" required>
+  ID of the subject to update
+</ParamField>
+
+<ParamField body="code" type="string">
+  New subject code
+</ParamField>
+
+<ParamField body="name" type="string">
+  New name
+</ParamField>
+
+<ParamField body="short_name" type="string">
+  New short name
+</ParamField>
+
+<ParamField body="academic_area_id" type="uuid">
+  New academic area ID
+</ParamField>
+
+<ParamField body="status" type="string">
+  New status: `active` or `inactive`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://api.athena-erp.com/academic/subjects/d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "short_name": "Physics I"
+  }'
+```
+</RequestExample>
+
+### Delete Subject
+
+<ParamField path="subject_id" type="uuid" required>
+  ID of the subject to delete
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://api.athena-erp.com/academic/subjects/d4e5f6a7-b8c9-4d0e-a1b2-c3d4e5f6a7b8" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204 - No Content
+```
+</ResponseExample>
+
+## Permissions
+
+- **List areas/subjects**: Requires `read:all` or `read:grades` permission
+- **Create/Update/Delete**: Requires `write:all` permission

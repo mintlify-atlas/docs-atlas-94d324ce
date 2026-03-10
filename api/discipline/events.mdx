@@ -1,0 +1,219 @@
+---
+title: "Discipline Case Events"
+description: "Timeline events and documentation for discipline cases"
+---
+
+## Add Case Event
+
+<api-endpoint method="POST" path="/discipline/cases/{case_id}/events" />
+
+Add a new event to a discipline case timeline. Events document the progression of a case through investigation, meetings, interventions, and resolutions.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+### Request Body
+
+<param-field path="event_type" type="string" required>
+  Type of event. Common values:
+  - `report` - Initial incident report
+  - `investigation` - Investigation activity
+  - `meeting` - Meeting with students, parents, or staff
+  - `intervention` - Disciplinary intervention or action
+  - `follow_up` - Follow-up check or status update
+  - `resolution` - Resolution or closure activity
+  - `note` - General note or documentation
+</param-field>
+
+<param-field path="title" type="string" required>
+  Brief title summarizing the event
+</param-field>
+
+<param-field path="body" type="string" optional>
+  Detailed description of what occurred during this event
+</param-field>
+
+<param-field path="event_date" type="datetime" required>
+  When this event occurred
+</param-field>
+
+### Response
+
+<response-field name="id" type="uuid">
+  Unique identifier for the event
+</response-field>
+
+<response-field name="school_id" type="uuid">
+  ID of the school
+</response-field>
+
+<response-field name="discipline_case_id" type="uuid">
+  ID of the parent discipline case
+</response-field>
+
+<response-field name="event_type" type="string">
+  Type of event
+</response-field>
+
+<response-field name="title" type="string">
+  Event title
+</response-field>
+
+<response-field name="body" type="string">
+  Event description
+</response-field>
+
+<response-field name="authored_by" type="uuid">
+  User ID of the person who created this event
+</response-field>
+
+<response-field name="event_date" type="datetime">
+  When the event occurred
+</response-field>
+
+<response-field name="created_at" type="datetime">
+  When this record was created
+</response-field>
+
+<request-example>
+```bash
+curl -X POST "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "meeting",
+    "title": "Reunión con padres de familia",
+    "body": "Se realizó reunión con los padres del estudiante para discutir el incidente. Los padres mostraron colaboración y compromiso para trabajar en el comportamiento en casa.",
+    "event_date": "2026-03-10T16:00:00Z"
+  }'
+```
+</request-example>
+
+<response-example>
+```json
+{
+  "id": "777ghi88-jkk9-0123-4567-890123456jkl",
+  "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+  "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+  "event_type": "meeting",
+  "title": "Reunión con padres de familia",
+  "body": "Se realizó reunión con los padres del estudiante para discutir el incidente. Los padres mostraron colaboración y compromiso para trabajar en el comportamiento en casa.",
+  "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+  "event_date": "2026-03-10T16:00:00Z",
+  "created_at": "2026-03-10T16:15:00Z"
+}
+```
+</response-example>
+
+---
+
+## List Case Events
+
+<api-endpoint method="GET" path="/discipline/cases/{case_id}/events" />
+
+Retrieve all events for a specific discipline case, ordered chronologically by event date.
+
+### Path Parameters
+
+<param-field path="case_id" type="uuid" required>
+  Unique identifier of the discipline case
+</param-field>
+
+<request-example>
+```bash
+curl -X GET "https://api.athena-erp.com/discipline/cases/123e4567-e89b-12d3-a456-426614174000/events" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-School-ID: your-school-id"
+```
+</request-example>
+
+<response-example>
+```json
+[
+  {
+    "id": "555efg66-hii7-8901-2345-678901234hij",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+    "event_type": "report",
+    "title": "Reporte inicial",
+    "body": "Se reporta incidente durante el descanso",
+    "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+    "event_date": "2026-03-09T10:15:00Z",
+    "created_at": "2026-03-09T10:30:00Z"
+  },
+  {
+    "id": "666fgh77-ijj8-9012-3456-789012345ijk",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+    "event_type": "investigation",
+    "title": "Entrevista con testigos",
+    "body": "Se entrevistaron tres estudiantes testigos del incidente. Todos confirman los hechos reportados.",
+    "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+    "event_date": "2026-03-09T14:00:00Z",
+    "created_at": "2026-03-09T14:30:00Z"
+  },
+  {
+    "id": "777ghi88-jkk9-0123-4567-890123456jkl",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+    "event_type": "meeting",
+    "title": "Reunión con padres de familia",
+    "body": "Se realizó reunión con los padres del estudiante para discutir el incidente. Los padres mostraron colaboración y compromiso para trabajar en el comportamiento en casa.",
+    "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+    "event_date": "2026-03-10T16:00:00Z",
+    "created_at": "2026-03-10T16:15:00Z"
+  },
+  {
+    "id": "888hij99-kll0-1234-5678-901234567klm",
+    "school_id": "987fcdeb-51a2-43d1-b789-123456789abc",
+    "discipline_case_id": "123e4567-e89b-12d3-a456-426614174000",
+    "event_type": "resolution",
+    "title": "Aplicación de medida correctiva",
+    "body": "Se aplica amonestación escrita y se establece plan de mejoramiento comportamental con seguimiento semanal.",
+    "authored_by": "456e7890-a12b-34c5-d678-901234567def",
+    "event_date": "2026-03-10T17:00:00Z",
+    "created_at": "2026-03-10T17:15:00Z"
+  }
+]
+```
+</response-example>
+
+## Event Types Reference
+
+Use these standard event types for consistency:
+
+| Event Type | Description | When to Use |
+|------------|-------------|-------------|
+| `report` | Initial incident report | When first documenting an incident |
+| `investigation` | Investigation activities | Interviews, evidence gathering, fact-finding |
+| `meeting` | Meetings with stakeholders | Parent conferences, student meetings, committee meetings |
+| `intervention` | Disciplinary actions | Warnings, suspensions, behavioral contracts |
+| `follow_up` | Progress checks | Monitoring student behavior, checking compliance |
+| `resolution` | Case resolution | Final decision, closure of case |
+| `note` | General documentation | Any other relevant documentation |
+
+## Timeline Best Practices
+
+<tip>
+**Document comprehensively**: The event timeline serves as the official record for due process. Include all significant interactions, decisions, and actions taken.
+</tip>
+
+<warning>
+**Maintain chronological accuracy**: Always use the actual date/time when events occurred, not when they were recorded in the system.
+</warning>
+
+<info>
+Events are automatically authored by the currently authenticated user. The `authored_by` field is set automatically and cannot be overridden.
+</info>
+
+## Permissions
+
+Event endpoints require one of the following permissions:
+- `write:convivencia` - For creating and managing events
+- `write:due_process` - For due process management
+- `read:all` - For viewing events (read-only)
+- `write:all` - Full access to all operations

@@ -1,0 +1,212 @@
+---
+title: Student Enrollment
+description: Manage student enrollment lifecycle from registration to graduation
+icon: user-plus
+---
+
+The enrollment module manages the complete student enrollment lifecycle, from initial registration through document collection to enrollment status tracking. It integrates with SIMAT (Sistema Integrado de Matrícula) for Colombian schools.
+
+## Overview
+
+Enrollment in Athena ERP represents the relationship between a student and a specific school year. Each enrollment tracks:
+
+- **Academic placement** - Grade level, group/class assignment, and shift
+- **Enrollment status** - From pending documents to active, graduated, or withdrawn
+- **Required documents** - Digital document collection and validation
+- **Status history** - Complete audit trail of enrollment changes
+- **SIMAT integration** - Status sync with Colombia's national enrollment system
+
+<Info>
+Students can have multiple enrollments across different school years, but only one enrollment per school year.
+</Info>
+
+## Enrollment Workflow
+
+### 1. Create Enrollment
+
+There are two ways to create an enrollment:
+
+<Tabs>
+  <Tab title="Existing Student">
+    Enroll a student already in the system:
+    
+    1. Navigate to **Enrollments** → **Create Enrollment**
+    2. Select the student from your school's student list
+    3. Choose the school year
+    4. Specify grade level, group code, and shift
+    5. Set initial status (typically "pending_documents")
+    
+    The enrollment starts in "pending_documents" status, waiting for required documentation.
+  </Tab>
+  
+  <Tab title="Full Enrollment (New Student)">
+    Create a student record and enrollment simultaneously:
+    
+    1. Navigate to **Enrollments** → **Quick Enrollment**
+    2. Enter student information (document type, number, full name, birth date, gender)
+    3. Specify enrollment details (school year, grade level, group, shift)
+    4. System creates the student record if they don't exist
+    5. Enrollment automatically starts in "pending_documents" status
+    
+    This workflow is ideal for new student intake or bulk enrollment events.
+  </Tab>
+</Tabs>
+
+### 2. Document Collection
+
+Every enrollment requires supporting documents to be uploaded:
+
+**Supported document types:**
+- Birth certificate (Registro Civil)
+- Previous school transcript
+- Health records
+- Parent/guardian identification
+- SISBEN certificate (if applicable)
+- Special needs documentation (PIAR)
+
+**Upload process:**
+1. Navigate to the enrollment details page
+2. Click **Upload Document**
+3. Select document type
+4. Upload file (PDF, PNG, or JPG, max 10MB)
+5. Optionally add document version identifier
+
+Documents are securely stored in cloud storage and accessible only to authorized staff.
+
+<Tip>
+Documents can be replaced by uploading a new file of the same type. The system maintains the upload history.
+</Tip>
+
+### 3. Review and Validation
+
+Once documents are collected:
+
+1. Staff with enrollment permissions review uploaded documents
+2. Mark documents as validated or rejected
+3. Update enrollment status to "in_review" or "active" as appropriate
+4. System maintains a complete audit trail of who made changes and when
+
+### 4. Status Management
+
+Enrollment status follows this typical progression:
+
+<Steps>
+  <Step title="pending_documents">
+    Initial state - waiting for required documents to be uploaded
+  </Step>
+  <Step title="in_review">
+    Documents received and under review by enrollment staff
+  </Step>
+  <Step title="active">
+    Enrollment approved and student is active for the school year
+  </Step>
+  <Step title="withdrawn / graduated / archived">
+    Final states when student leaves or completes the school year
+  </Step>
+</Steps>
+
+**Status changes are tracked automatically:**
+- Each status change records the new status, timestamp, and user who made the change
+- View complete status history on the enrollment detail page
+- Filter enrollment lists by current status
+
+## Finding and Managing Enrollments
+
+### List View Features
+
+The enrollments list provides powerful search and filtering:
+
+**Filters:**
+- School year
+- Grade level
+- Status (pending, active, withdrawn, etc.)
+- Search by student name, document number, or enrollment ID
+
+**Display information:**
+- Student name and document
+- Grade level and group
+- School year
+- Current status
+- Number of documents uploaded
+- Created and updated dates
+
+### Enrollment Details
+
+Click any enrollment to view complete details:
+
+- Full student information with link to student profile
+- Current and historical status
+- All uploaded documents with preview/download
+- SIMAT sync status (for Colombian schools)
+- Audit trail of changes
+
+## SIMAT Integration
+
+<Note>
+SIMAT (Sistema Integrado de Matrícula) is Colombia's national student enrollment system.
+</Note>
+
+For schools in Colombia, Athena ERP can sync enrollment data with SIMAT:
+
+- **SIMAT status tracking** - Store SIMAT-specific enrollment status and metadata
+- **Sync indicators** - View last sync time and any sync issues
+- **Extra data storage** - Additional SIMAT fields stored in `extra_data` and `simat_status`
+
+Contact your school administrator to enable SIMAT integration features.
+
+## Bulk Operations
+
+For efficient enrollment processing during peak periods:
+
+**Mass enrollment:**
+- Upload CSV with student and enrollment data
+- System creates or updates student records
+- Creates enrollments in batch
+- Reports any errors or duplicates
+
+**Status updates:**
+- Filter enrollments by criteria
+- Update status for multiple enrollments at once
+- Useful for batch-approving reviewed enrollments
+
+## Permissions
+
+Enrollment operations require specific permissions:
+
+| Action | Required Permission |
+|--------|--------------------|
+| View enrollments | `read:enrollment` or `read:all` |
+| Create/edit enrollments | `write:enrollment` or `write:all` |
+| Delete enrollments | `write:enrollment` or `write:all` |
+| Upload documents | `write:enrollment` or `write:all` |
+| View documents | `read:enrollment` or `read:all` |
+
+<Warning>
+Deleting an enrollment also removes all associated documents permanently. This action cannot be undone.
+</Warning>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Document Standards" icon="file-check">
+    Establish clear document requirements and formats. Communicate these to parents/guardians during registration.
+  </Card>
+  
+  <Card title="Status Workflows" icon="diagram-project">
+    Define your school's enrollment workflow and status transitions. Train staff on consistent status management.
+  </Card>
+  
+  <Card title="Periodic Reviews" icon="calendar-check">
+    Regularly review pending enrollments to ensure timely processing and document collection.
+  </Card>
+  
+  <Card title="Data Accuracy" icon="circle-check">
+    Verify student information matches official documents before activating enrollments.
+  </Card>
+</CardGroup>
+
+## Related Features
+
+- [Student Management](/features/students) - View and manage student profiles
+- [Academic Management](/features/academic) - Assign students to classes and subjects
+- [School Years](/admin/school-years) - Set up school years and grade levels

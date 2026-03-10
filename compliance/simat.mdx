@@ -1,0 +1,334 @@
+---
+title: 'SIMAT Integration'
+description: 'Configure and manage SIMAT exports and synchronization'
+icon: 'file-export'
+---
+
+## What is SIMAT?
+
+The **Sistema Integrado de Matrícula** (SIMAT) is Colombia's national student enrollment information system, managed by the Ministry of National Education. All official educational institutions must register and maintain student enrollment data in SIMAT.
+
+<Warning>
+  **Official Reporting**: SIMAT data is used for official statistics, resource allocation, and educational policy. Errors or omissions can affect your institution's funding and regulatory status.
+</Warning>
+
+## How Athena Handles SIMAT
+
+Athena serves as your internal enrollment management system while maintaining synchronization with SIMAT:
+
+1. **Local Enrollment**: Manage student enrollments in Athena with full workflow support
+2. **Export Preparation**: Generate SIMAT-compatible CSV files with validated data
+3. **Manual Upload**: Upload the CSV to the official SIMAT web platform
+4. **Status Tracking**: Mark enrollments as synced and track SIMAT IDs
+
+<Note>
+  Athena does not directly connect to SIMAT servers. The official SIMAT platform requires manual file uploads through their web interface. Athena prepares the correctly formatted export files.
+</Note>
+
+## Database Schema
+
+### School Settings
+
+SIMAT configuration is stored in the `school_settings` table:
+
+```sql
+CREATE TABLE school_settings (
+    school_id         UUID PRIMARY KEY,
+    simat_settings    JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- other fields...
+);
+```
+
+### SIMAT Settings Structure
+
+```json
+{
+  "enabled": true,
+  "institution_code": "211001234567",
+  "dane_code": "211001234567",
+  "export_encoding": "latin1",
+  "field_mappings": {
+    "document_type_map": {
+      "TI": "3",
+      "CC": "1",
+      "RC": "2"
+    }
+  },
+  "csv_delimiter": ";",
+  "last_export_at": "2026-03-10T10:30:00Z"
+}
+```
+
+### Enrollment SIMAT Status
+
+Each enrollment tracks its SIMAT synchronization state:
+
+```sql
+CREATE TABLE enrollments (
+    id            UUID PRIMARY KEY,
+    school_id     UUID NOT NULL,
+    student_id    UUID NOT NULL,
+    simat_status  JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- other fields...
+);
+```
+
+### SIMAT Status Structure
+
+```json
+{
+  "synced": true,
+  "synced_at": "2026-02-15T14:22:00Z",
+  "synced_by": "user-uuid",
+  "simat_id": "20260215ABC123",
+  "export_batch": "2026_periodo1",
+  "last_error": null
+}
+```
+
+## Configuration
+
+### Step 1: Institution Setup
+
+Navigate to **Configuración** → **SIMAT y Codificación**
+
+**Required Fields:**
+- **DANE Code**: Your institution's official DANE code (e.g., `211001234567`)
+- **Institution Code**: SIMAT institution identifier (often same as DANE)
+- **CSV Encoding**: `latin1` (default) or `utf8` depending on regional requirements
+- **CSV Delimiter**: Usually `;` (semicolon)
+
+<Warning>
+  **Verify with Your Secretaría**: Different regional education secretariats may require specific encoding or delimiter settings. Confirm these settings before your first export.
+</Warning>
+
+### Step 2: Field Mappings
+
+Athena automatically maps most fields, but document types require specific SIMAT codes:
+
+| Athena Document Type | SIMAT Code | Description |
+|---------------------|------------|-------------|
+| TI | 3 | Tarjeta de Identidad |
+| CC | 1 | Cédula de Ciudadanía |
+| RC | 2 | Registro Civil |
+| CE | 4 | Cédula de Extranjería |
+
+### Step 3: Grade Level Codes
+
+SIMAT uses numeric codes for grade levels. Athena handles the mapping automatically:
+
+| Grade | SIMAT Code |
+|-------|------------|
+| Transición | 0 |
+| 1° | 1 |
+| 2° | 2 |
+| ... | ... |
+| 11° | 11 |
+
+## Export Process
+
+### From the Enrollment Dashboard
+
+1. Go to **Matrículas** (Enrollment Management)
+2. Filter enrollments by status if needed
+3. Click **Carga Masiva SIMAT** button
+4. Select the academic year and enrollment status
+5. Click **Generar Exportación SIMAT**
+
+### Export File Format
+
+Athena generates a CSV file with the following structure:
+
+```csv
+DANE_CODE;STUDENT_DOC_TYPE;STUDENT_DOC_NUMBER;FIRST_NAME;LAST_NAME;BIRTH_DATE;GENDER;GRADE;GROUP;ENROLLMENT_DATE
+211001234567;3;1098765432;JUAN;PEREZ GARCIA;2010-05-15;M;10;A;2026-01-20
+```
+
+<Note>
+  **Encoding Matters**: The file encoding (Latin-1 vs UTF-8) affects how special characters (á, é, í, ó, ú, ñ) are displayed. Always use the encoding specified by your regional authority.
+</Note>
+
+### File Naming Convention
+
+Exported files follow this pattern:
+```
+simat_export_{school_name}_{year}_{timestamp}.csv
+```
+
+Example: `simat_export_colegio_santafe_2026_20260310.csv`
+
+## Uploading to SIMAT
+
+### Manual Upload Steps
+
+1. **Login to SIMAT Portal**
+   - URL: https://www.sistemamatriculas.gov.co/ (verify current URL with MEN)
+   - Use your institutional credentials
+
+2. **Navigate to Enrollment Upload**
+   - Go to "Carga Masiva" or "Importar Matrícula"
+   - Select the academic year
+
+3. **Upload CSV File**
+   - Choose the file generated by Athena
+   - Wait for SIMAT validation
+   - Review any errors or warnings
+
+4. **Resolve Validation Errors**
+   - Download the error report from SIMAT
+   - Fix issues in Athena
+   - Re-export and upload
+
+5. **Confirm Synchronization**
+   - Once SIMAT accepts the file, record the transaction ID
+   - Mark enrollments as synced in Athena
+
+<Warning>
+  **Validation Failures**: Common SIMAT validation errors include:
+  - Document number already registered in another institution
+  - Invalid birth date (student too young/old for grade)
+  - Missing required fields
+  - Encoding issues with special characters
+</Warning>
+
+## Status Tracking
+
+### Sync Status Indicators
+
+In the enrollment dashboard, you'll see SIMAT sync status:
+
+- **Pendiente SIMAT** (Pending): Not yet exported or synced
+- **Sincronizado** (Synced): Successfully registered in SIMAT
+- **Error SIMAT**: Validation failed, needs correction
+
+### Bulk Status Update
+
+After successful SIMAT upload:
+
+1. Go to the enrollment detail page
+2. Scroll to **Validación SIMAT** section
+3. Check "Validar" to mark as synced
+4. Enter the SIMAT ID if provided
+5. Save changes
+
+### API Integration
+
+For programmatic access:
+
+```python
+PATCH /api/enrollments/{enrollment_id}
+
+{
+  "simat_status": {
+    "synced": true,
+    "synced_at": "2026-03-10T15:30:00Z",
+    "synced_by": "user-uuid",
+    "simat_id": "20260310XYZ789"
+  }
+}
+```
+
+## Permissions
+
+SIMAT export and sync operations require specific permissions:
+
+| Role | Permissions |
+|------|-------------|
+| Rector | `export:simat`, full access |
+| Coordinator | `export:simat`, can export and mark as synced |
+| Secretary | `export:simat`, can export and mark as synced |
+| Teacher | View only, no export |
+| Student | No access |
+| Guardian | No access |
+
+```python
+# From permissions.py
+ROLE_PERMISSIONS = {
+    Role.RECTOR: {"export:simat", ...},
+    Role.COORDINATOR: {"export:simat", ...},
+    Role.SECRETARY: {"export:simat", ...},
+}
+```
+
+## Troubleshooting
+
+### Export File is Empty
+
+**Cause**: No enrollments match the filter criteria
+
+**Solution**: 
+- Check enrollment status filters
+- Verify academic year selection
+- Ensure students have required fields (document, birth date, etc.)
+
+### Special Characters Display Incorrectly
+
+**Cause**: Encoding mismatch
+
+**Solution**:
+- Verify `export_encoding` in `simat_settings`
+- Try switching between `latin1` and `utf8`
+- Confirm with your Secretaría which encoding they require
+
+### SIMAT Rejects Document Number
+
+**Cause**: Student may be registered in another institution
+
+**Solution**:
+- Contact the previous institution for transfer documentation
+- Use SIMAT's "Traslado" (transfer) process
+- Verify document number is correct
+
+### Grade Level Not Accepted
+
+**Cause**: SIMAT grade code mismatch
+
+**Solution**:
+- Verify grade level mapping in Athena configuration
+- Ensure grade matches student age range per Resolution 1740
+
+## Best Practices
+
+<Card title="Regular Synchronization" icon="rotate">
+  Export and sync to SIMAT at least once per academic period. Critical times:
+  - Beginning of school year (initial enrollment)
+  - End of enrollment window
+  - After enrollment status changes (withdrawals, transfers)
+</Card>
+
+<Card title="Data Quality" icon="check">
+  Before exporting:
+  - Verify all students have complete documents
+  - Validate birth dates and ages
+  - Confirm Habeas Data consent is captured
+  - Review enrollment status accuracy
+</Card>
+
+<Card title="Keep Records" icon="folder">
+  Maintain:
+  - Copy of exported CSV files
+  - SIMAT transaction IDs
+  - Error reports and resolutions
+  - Correspondence with Secretaría regarding SIMAT issues
+</Card>
+
+## Regulatory References
+
+- **Decree 1075 of 2015**: Education Sector Regulatory Framework
+- **Resolution 1740 of 2009**: SIMAT implementation guidelines
+- **Ministry of Education Circular**: Annual SIMAT enrollment instructions
+
+<Note>
+  **Stay Updated**: SIMAT requirements and formats may change annually. Always review the Ministry of Education's current guidelines at the start of each school year.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Habeas Data Compliance" icon="shield-halved" href="/compliance/habeas-data">
+    Ensure data protection before SIMAT export
+  </Card>
+  <Card title="Enrollment Management" icon="users" href="/essentials/enrollments">
+    Learn about the full enrollment workflow
+  </Card>
+</CardGroup>

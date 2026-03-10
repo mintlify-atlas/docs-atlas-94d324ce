@@ -1,0 +1,178 @@
+---
+title: 'Bulk Upload Students'
+openapi: 'POST /students/bulk'
+---
+
+Uploads multiple student records at once using a CSV file. This endpoint is useful for importing large numbers of students into the system.
+
+## Request
+
+This endpoint accepts a multipart form-data request with a CSV file.
+
+<ParamField body="file" type="file" required>
+  CSV file containing student data. Must be UTF-8 encoded.
+</ParamField>
+
+## CSV Format
+
+The CSV file should include the following columns. Both English and Spanish column names are supported:
+
+| English Column Name | Spanish Column Name | Required | Description |
+|---------------------|---------------------|----------|-------------|
+| `full_name` | `nombre_completo` | Yes | Student's full name |
+| `document_number` | `numero_documento` | Yes | Identification document number |
+| `document_type` | `tipo_documento` | No | Document type (defaults to `TI` if not provided) |
+| `gender` | `genero` | No | Student's gender |
+
+<Note>
+The bulk upload endpoint currently supports basic student information only. Guardian relationships and other advanced fields (`birth_date`, `extra_data`, `piar_data`) must be added individually using the [Update Student](/api/students/update) endpoint.
+</Note>
+
+### CSV Example
+
+```csv
+full_name,document_number,document_type,gender
+Juan Pérez García,1234567890,TI,M
+María Rodríguez López,0987654321,TI,F
+Carlos Gómez Martínez,1122334455,RC,M
+```
+
+Or using Spanish column names:
+
+```csv
+nombre_completo,numero_documento,tipo_documento,genero
+Juan Pérez García,1234567890,TI,M
+María Rodríguez López,0987654321,TI,F
+Carlos Gómez Martínez,1122334455,RC,M
+```
+
+## Response
+
+Returns a summary of the bulk upload process.
+
+<ResponseField name="message" type="string">
+  Status message indicating the process is complete
+</ResponseField>
+
+<ResponseField name="processed" type="integer">
+  Number of students successfully created
+</ResponseField>
+
+<ResponseField name="errors" type="array">
+  Array of error messages for rows that failed validation or already exist
+  
+  <Expandable title="Error Format">
+    Each error message includes:
+    - The row number where the error occurred
+    - A description of the error
+    - The document number (if applicable)
+  </Expandable>
+</ResponseField>
+
+## Validation Rules
+
+- `full_name` and `document_number` are required for each row
+- The combination of `document_type` and `document_number` must be unique within the school
+- If a student with the same document already exists, that row will be skipped and added to the errors array
+- Empty or invalid rows are skipped and reported in the errors array
+
+## Behavior
+
+- All successfully validated students are created in a single transaction
+- If any student fails validation, it will be reported in the errors array, but other valid students will still be created
+- Students are always created with `is_active = true`
+- Empty `extra_data` and `piar_data` objects are initialized for all students
+
+## Permissions Required
+
+Requires the `write:all` permission (more restrictive than individual student creation).
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.athena-erp.com/students/bulk" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "file=@students.csv"
+```
+
+```python Python
+import requests
+
+with open('students.csv', 'rb') as f:
+    response = requests.post(
+        "https://api.athena-erp.com/students/bulk",
+        headers={"Authorization": "Bearer YOUR_API_TOKEN"},
+        files={"file": f}
+    )
+
+result = response.json()
+print(f"Processed: {result['processed']} students")
+if result['errors']:
+    print(f"Errors: {len(result['errors'])}")
+    for error in result['errors']:
+        print(f"  - {error}")
+```
+
+```javascript JavaScript
+const formData = new FormData();
+const fileInput = document.querySelector('input[type="file"]');
+formData.append('file', fileInput.files[0]);
+
+const response = await fetch('https://api.athena-erp.com/students/bulk', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_TOKEN'
+  },
+  body: formData
+});
+
+const result = await response.json();
+console.log(`Processed: ${result.processed} students`);
+if (result.errors.length > 0) {
+  console.log(`Errors: ${result.errors.length}`);
+  result.errors.forEach(error => console.log(`  - ${error}`));
+}
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 Success
+{
+  "message": "Proceso completado",
+  "processed": 48,
+  "errors": [
+    "Fila 15: documento ya existe (1234567890)",
+    "Fila 23: nombre y documento son obligatorios",
+    "Fila 42: documento ya existe (9876543210)"
+  ]
+}
+```
+
+```json 200 All Processed
+{
+  "message": "Proceso completado",
+  "processed": 50,
+  "errors": []
+}
+```
+
+</ResponseExample>
+
+## Tips for Successful Bulk Uploads
+
+<Tip>
+**Before uploading:**
+- Ensure your CSV file is UTF-8 encoded
+- Remove any duplicate document numbers from your file
+- Verify that required columns (`full_name` and `document_number`) are present
+- Use consistent document types (TI, RC, CC, CE, NUIP, or PASSPORT)
+</Tip>
+
+<Tip>
+**After uploading:**
+- Review the `errors` array to identify any rows that failed
+- Use the [Update Student](/api/students/update) endpoint to add missing information like birth dates, guardians, and custom data
+- Use the [List Students](/api/students/list) endpoint to verify all students were created correctly
+</Tip>

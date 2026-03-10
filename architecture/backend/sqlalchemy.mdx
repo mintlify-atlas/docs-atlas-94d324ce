@@ -1,0 +1,416 @@
+---
+title: SQLAlchemy Models & Async Patterns
+description: Database architecture, ORM models, and async session management in Athena ERP
+---
+
+## Overview
+
+Athena uses **SQLAlchemy 2.0** with async support via `asyncpg` for PostgreSQL. All database operations are asynchronous, ensuring high performance under concurrent load.
+
+## Database Connection
+
+Defined in `app/database.py`:
+
+```python
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.is_dev,  # SQL logging in development
+    pool_pre_ping=True,    # Verify connections before use
+    pool_size=10,
+    max_overflow=20,
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,  # Allow access to objects after commit
+    autoflush=False,         # Manual control over flush timing
+)
+```
+
+### Configuration Details
+
+| Parameter | Value | Purpose |
+|-----------|-------|----------|
+| `pool_size` | 10 | Base connection pool size |
+| `max_overflow` | 20 | Additional connections under load |
+| `pool_pre_ping` | True | Health check before using connection |
+| `expire_on_commit` | False | Keep objects loaded after commit |
+| `autoflush` | False | Explicit flush control |
+
+## Session Management
+
+The `get_db()` dependency provides session management:
+
+```python
+async def get_db() -> AsyncSession:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+```
+
+<Info>
+Sessions automatically commit on success, rollback on exception, and always close properly.
+</Info>
+
+## Base Model & Mixins
+
+### Declarative Base
+
+```python
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+```
+
+All models inherit from this base class.
+
+### TimestampMixin
+
+Automatic timestamp tracking:
+
+```python
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+```
+
+- `created_at` - Set once on insert (server-side default)
+- `updated_at` - Updated on every modification
+
+### SchoolScopedMixin
+
+Multi-tenancy support:
+
+```python
+class SchoolScopedMixin:
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("schools.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+```
+
+<Warning>
+All school-scoped data is automatically deleted when a school is deleted (`ondelete="CASCADE"`).
+</Warning>
+
+### UUID Primary Keys
+
+Helper function for consistent UUID primary keys:
+
+```python
+def uuid_pk() -> Mapped[uuid.UUID]:
+    return mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+```
+
+## Core Models
+
+### User Model
+
+```python
+class User(Base, TimestampMixin):
+    __tablename__ = "users"
+    
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+```
+
+<Info>
+User IDs come from Supabase Auth, so we don't auto-generate UUIDs here.
+</Info>
+
+### School Membership (Multi-tenancy)
+
+```python
+class SchoolMembership(Base, SchoolScopedMixin, TimestampMixin):
+    __tablename__ = "school_memberships"
+    
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    roles: Mapped[list] = jsonb_array_default()
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+```
+
+Users can belong to multiple schools with different roles per school.
+
+### Student Model
+
+```python
+class Student(Base, SchoolScopedMixin, TimestampMixin):
+    __tablename__ = "students"
+    
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    document_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    document_number: Mapped[str] = mapped_column(String(30), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    birth_date: Mapped[date | None] = mapped_column(Date)
+    gender: Mapped[str | None] = mapped_column(String(20))
+    extra_data: Mapped[dict] = jsonb_object_default()
+    piar_data: Mapped[dict] = jsonb_object_default()  # Special needs
+```
+
+### School Model
+
+```python
+class School(Base, TimestampMixin):
+    __tablename__ = "schools"
+    
+    id: Mapped[uuid.UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    nit: Mapped[str | None] = mapped_column(String(20))
+    resolution: Mapped[str | None] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    
+    # Relationships
+    settings: Mapped["SchoolSettings | None"] = relationship(back_populates="school")
+    years: Mapped[list["SchoolYear"]] = relationship(back_populates="school")
+```
+
+## JSONB Columns
+
+PostgreSQL's JSONB type for flexible data:
+
+```python
+def jsonb_object_default() -> Mapped[dict]:
+    return mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb")
+    )
+
+def jsonb_array_default() -> Mapped[list]:
+    return mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb")
+    )
+```
+
+### Usage Example
+
+```python
+class Enrollment(Base, SchoolScopedMixin, TimestampMixin):
+    __tablename__ = "enrollments"
+    
+    status_history: Mapped[list] = jsonb_array_default()
+    simat_status: Mapped[dict] = jsonb_object_default()
+    extra_data: Mapped[dict] = jsonb_object_default()
+```
+
+<Info>
+JSONB provides indexing and query capabilities while maintaining schema flexibility.
+</Info>
+
+## Check Constraints
+
+Database-level validation:
+
+```python
+class SchoolYear(Base, SchoolScopedMixin, TimestampMixin):
+    __tablename__ = "school_years"
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('planning', 'active', 'closed', 'archived')",
+            name="chk_school_years_status"
+        ),
+        CheckConstraint(
+            "ends_on >= starts_on",
+            name="chk_school_years_dates"
+        ),
+    )
+```
+
+## Async Query Patterns
+
+### Select Query
+
+```python
+from sqlalchemy import select
+
+result = await db.execute(
+    select(Student)
+    .where(Student.school_id == school_id)
+    .where(Student.is_active.is_(True))
+    .order_by(Student.full_name)
+)
+students = result.scalars().all()
+```
+
+### Eager Loading (Avoid N+1)
+
+```python
+from sqlalchemy.orm import selectinload
+
+result = await db.execute(
+    select(School)
+    .options(selectinload(School.settings))
+    .where(School.id == school_id)
+)
+school = result.scalar_one_or_none()
+```
+
+### Insert
+
+```python
+student = Student(
+    school_id=school_id,
+    full_name="Juan Pérez",
+    document_type="CC",
+    document_number="1234567890",
+)
+db.add(student)
+await db.flush()  # Execute INSERT, populate student.id
+await db.refresh(student)  # Reload from DB
+```
+
+### Update
+
+```python
+student.full_name = "Juan Carlos Pérez"
+await db.flush()  # Persist changes
+```
+
+### Delete
+
+```python
+await db.delete(student)
+await db.flush()
+```
+
+## Transactions
+
+Transactions are handled by the session context:
+
+```python
+async def transfer_student(
+    student_id: uuid.UUID,
+    new_school_id: uuid.UUID,
+    db: AsyncSession,
+):
+    # All operations in one transaction
+    student = await db.get(Student, student_id)
+    student.school_id = new_school_id
+    
+    enrollment = Enrollment(student_id=student_id, school_id=new_school_id)
+    db.add(enrollment)
+    
+    # Auto-commits if no exception raised
+```
+
+<Warning>
+If any operation fails, the entire transaction rolls back automatically.
+</Warning>
+
+## Model Relationships
+
+### One-to-Many
+
+```python
+class SchoolYear(Base, SchoolScopedMixin, TimestampMixin):
+    school: Mapped["School"] = relationship(back_populates="years")
+    periods: Mapped[list["AcademicPeriod"]] = relationship(back_populates="school_year")
+```
+
+### Many-to-Many (via Association Table)
+
+```python
+class StudentGuardian(Base, SchoolScopedMixin):
+    __tablename__ = "student_guardians"
+    
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    guardian_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("guardians.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    relationship: Mapped[str] = mapped_column(String(50), nullable=False)
+    is_primary: Mapped[bool] = mapped_column(nullable=False, default=False)
+```
+
+## Migrations (Alembic)
+
+Database migrations are managed with Alembic:
+
+```bash
+# Create a new migration
+alembic revision --autogenerate -m "Add student_guardians table"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback one version
+alembic downgrade -1
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always use async/await">
+    Never use synchronous SQLAlchemy methods. All database operations must be awaited.
+  </Accordion>
+  
+  <Accordion title="Use explicit flush() before accessing IDs">
+    After `db.add()`, call `await db.flush()` to populate auto-generated IDs.
+  </Accordion>
+  
+  <Accordion title="Avoid N+1 queries">
+    Use `selectinload()` or `joinedload()` to eager-load relationships.
+  </Accordion>
+  
+  <Accordion title="Index foreign keys">
+    All foreign key columns should have `index=True` for query performance.
+  </Accordion>
+  
+  <Accordion title="Use CheckConstraints for enums">
+    Database-level validation ensures data integrity even outside the application.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="FastAPI Structure" icon="bolt" href="./fastapi">
+    Learn about the web framework layer
+  </Card>
+  <Card title="Permissions System" icon="shield" href="./permissions">
+    Understand role-based access control
+  </Card>
+</CardGroup>

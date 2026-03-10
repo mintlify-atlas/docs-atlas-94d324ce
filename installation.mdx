@@ -1,0 +1,662 @@
+---
+title: 'Installation'
+description: 'Set up Athena ERP for local development'
+icon: 'download'
+---
+
+# Installation Guide
+
+This guide walks you through setting up Athena ERP on your local machine for development. Athena ERP is a modern school management system designed specifically for Colombian schools, with multi-tenant architecture and role-based access control.
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Backend Requirements" icon="python">
+    - Python 3.12+
+    - PostgreSQL 16+
+    - Docker & Docker Compose (recommended)
+    - pip package manager
+  </Card>
+  
+  <Card title="Frontend Requirements" icon="node-js">
+    - Node.js 18+ or 20+
+    - npm 9+ or equivalent
+    - Modern web browser
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+Athena ERP consists of two main components:
+
+- **Backend API** (`athena-api`): FastAPI-based REST API with PostgreSQL
+- **Frontend** (`athena-front`): React 19 + Vite + TailwindCSS
+
+```
+athena-erp/
+├── athena-api/           # Python FastAPI backend
+│   ├── app/
+│   │   ├── routers/      # API endpoints
+│   │   ├── models/       # SQLAlchemy models
+│   │   ├── schemas/      # Pydantic schemas
+│   │   └── main.py       # Application entry point
+│   ├── alembic/          # Database migrations
+│   ├── docker-compose.yml
+│   └── pyproject.toml
+└── athena-front/         # React frontend
+    ├── src/
+    │   ├── pages/        # Route components
+    │   ├── components/   # Reusable UI components
+    │   ├── store/        # Zustand state management
+    │   └── api/          # API client
+    ├── package.json
+    └── vite.config.ts
+```
+
+<Note>
+  This guide focuses on local development. For production deployment, see the [Deployment Overview](/deployment/overview) guide.
+</Note>
+
+## Step 1: Clone the Repository
+
+First, clone the Athena ERP repository:
+
+```bash
+git clone https://github.com/yourusername/athena-erp.git
+cd athena-erp
+```
+
+## Step 2: Backend Setup
+
+<Steps>
+  <Step title="Navigate to the API directory">
+    ```bash
+    cd athena-api
+    ```
+  </Step>
+
+  <Step title="Start PostgreSQL with Docker">
+    The easiest way to get PostgreSQL running is with Docker Compose:
+    
+    ```bash
+    docker compose up -d db
+    ```
+    
+    This starts a PostgreSQL 16 container with the following configuration:
+    - **Host**: `localhost:5432`
+    - **Database**: `athena_db`
+    - **User**: `athena`
+    - **Password**: `athena_dev`
+    
+    <Accordion title="Optional: Start pgAdmin">
+      For a visual database interface, start pgAdmin:
+      
+      ```bash
+      docker compose --profile tools up -d pgadmin
+      ```
+      
+      Access pgAdmin at [http://localhost:5050](http://localhost:5050):
+      - Email: `admin@athena.local`
+      - Password: `admin`
+    </Accordion>
+    
+    <Accordion title="Alternative: Local PostgreSQL">
+      If you prefer to use a locally installed PostgreSQL:
+      
+      ```bash
+      # Create database and user
+      psql -U postgres
+      CREATE DATABASE athena_db;
+      CREATE USER athena WITH PASSWORD 'athena_dev';
+      GRANT ALL PRIVILEGES ON DATABASE athena_db TO athena;
+      ```
+      
+      Update your `.env` file accordingly.
+    </Accordion>
+  </Step>
+
+  <Step title="Create environment configuration">
+    Copy the example environment file and configure it:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit `.env` with your settings:
+    
+    ```bash
+    # ── Environment ──────────────────────────────
+    ENVIRONMENT=development
+    
+    # ── Database ─────────────────────────────────
+    DATABASE_URL=postgresql+asyncpg://athena:athena_dev@localhost:5432/athena_db
+    
+    # ── Auth / JWT ───────────────────────────────
+    JWT_SECRET=super-secret-local-dev-key-change-in-prod
+    JWT_ALGORITHM=HS256
+    ACCESS_TOKEN_EXPIRE_MINUTES=30
+    
+    # ── CORS ─────────────────────────────────────
+    CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+    ```
+    
+    <Warning>
+      Never commit your `.env` file to version control. The `JWT_SECRET` should be a strong random string in production.
+    </Warning>
+  </Step>
+
+  <Step title="Install Python dependencies">
+    Install the API and its dependencies using pip:
+    
+    ```bash
+    pip install -e .
+    ```
+    
+    This installs all required packages from `pyproject.toml`:
+    - FastAPI 0.115+ (web framework)
+    - SQLAlchemy 2.0+ (ORM with async support)
+    - Pydantic 2.10+ (data validation)
+    - Alembic 1.14+ (database migrations)
+    - asyncpg 0.30+ (PostgreSQL async driver)
+    - python-jose (JWT handling)
+    
+    <Accordion title="Development Dependencies">
+      For development, also install dev dependencies:
+      
+      ```bash
+      pip install -e ".[dev]"
+      ```
+      
+      This includes:
+      - pytest + pytest-asyncio (testing)
+      - ruff (linting)
+      - httpx (API testing)
+    </Accordion>
+  </Step>
+
+  <Step title="Run database migrations">
+    Initialize the database schema using Alembic:
+    
+    ```bash
+    alembic upgrade head
+    ```
+    
+    This creates all tables defined in the migrations:
+    - `users` - User accounts
+    - `schools` - School/tenant records
+    - `school_memberships` - User-school relationships
+    - `students` - Student profiles
+    - `guardians` - Guardian/parent information
+    - `enrollments` - Student enrollments by year
+    - `academic_periods` - Grading periods
+    - `grades` - Academic grades
+    - `attendance` - Attendance records
+    - `discipline_records` - Behavioral incidents
+    - `communications` - Messages and circulars
+    
+    <Accordion title="View Migration Status">
+      Check which migrations have been applied:
+      
+      ```bash
+      alembic current
+      ```
+      
+      View migration history:
+      ```bash
+      alembic history
+      ```
+    </Accordion>
+  </Step>
+
+  <Step title="Start the API server">
+    Run the FastAPI development server:
+    
+    ```bash
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    ```
+    
+    You should see:
+    ```
+    INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+    INFO:     Started reloader process [12345] using watchfiles
+    INFO:     Started server process [12346]
+    INFO:     Waiting for application startup.
+    INFO:     Application startup complete.
+    ```
+    
+    Verify the API is running:
+    ```bash
+    curl http://localhost:8000/health
+    ```
+    
+    Expected response:
+    ```json
+    {"status": "ok", "version": "0.1.0"}
+    ```
+  </Step>
+
+  <Step title="Access API documentation">
+    Open your browser and navigate to:
+    
+    - **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+    - **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+    
+    These interactive docs are automatically generated from your FastAPI code and only available in development mode.
+  </Step>
+</Steps>
+
+## Step 3: Frontend Setup
+
+<Steps>
+  <Step title="Navigate to the frontend directory">
+    Open a new terminal and navigate to the frontend:
+    
+    ```bash
+    cd athena-front
+    ```
+  </Step>
+
+  <Step title="Install Node.js dependencies">
+    Install all frontend packages:
+    
+    ```bash
+    npm install
+    ```
+    
+    This installs the key dependencies:
+    - React 19 (UI library)
+    - Vite 6.2 (build tool)
+    - TailwindCSS 4.1 (styling)
+    - React Router 7 (routing)
+    - TanStack Query 5 (data fetching)
+    - Zustand 5 (state management)
+    - React Hook Form (forms)
+    - Axios (HTTP client)
+    - Supabase JS (authentication)
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create your frontend environment configuration:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit `.env`:
+    
+    ```bash
+    # API endpoint
+    VITE_API_URL=http://localhost:8000
+    
+    # Supabase (optional for local dev)
+    VITE_SUPABASE_URL=
+    VITE_SUPABASE_ANON_KEY=
+    ```
+    
+    <Note>
+      Supabase configuration is optional for local development. You can use local JWT authentication initially and add Supabase later for production.
+    </Note>
+  </Step>
+
+  <Step title="Start the development server">
+    Run the Vite dev server:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    The frontend will start on [http://localhost:3000](http://localhost:3000):
+    ```
+    VITE v6.2.0  ready in 234 ms
+    
+    ➜  Local:   http://localhost:3000/
+    ➜  Network: http://192.168.1.100:3000/
+    ```
+  </Step>
+
+  <Step title="Verify the frontend loads">
+    Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the Athena ERP login page.
+  </Step>
+</Steps>
+
+## Step 4: Create Your First Admin User
+
+Before you can log in, you need to create an admin user:
+
+```bash
+cd athena-api
+PYTHONPATH=. python scripts/create_superadmin.py \
+  --id $(python -c "import uuid; print(uuid.uuid4())") \
+  --email admin@localhost \
+  --full-name "System Administrator" \
+  --membership-roles superadmin
+```
+
+<Accordion title="Script Details">
+  The `create_superadmin.py` script:
+  - Creates or updates a user in the `users` table
+  - Assigns the `superadmin` role
+  - Is idempotent (safe to run multiple times)
+  - Can optionally link to a specific school with `--school-id`
+  
+  View the full script at `athena-api/scripts/create_superadmin.py`.
+</Accordion>
+
+Now you can log in at [http://localhost:3000](http://localhost:3000) with:
+- Email: `admin@localhost`
+- Password: (set via Supabase or local auth)
+
+## Verification Checklist
+
+Ensure everything is working:
+
+<Steps>
+  <Step title="Database is running">
+    ```bash
+    docker compose ps
+    # Should show 'db' service as 'running'
+    ```
+  </Step>
+  
+  <Step title="Backend API is responding">
+    ```bash
+    curl http://localhost:8000/health
+    # Should return {"status": "ok", "version": "0.1.0"}
+    ```
+  </Step>
+  
+  <Step title="API docs are accessible">
+    Visit [http://localhost:8000/docs](http://localhost:8000/docs) and verify Swagger UI loads with all endpoints.
+  </Step>
+  
+  <Step title="Frontend is running">
+    Visit [http://localhost:3000](http://localhost:3000) and verify the login page appears.
+  </Step>
+  
+  <Step title="Can authenticate">
+    Log in with your admin credentials and verify you can access the dashboard.
+  </Step>
+</Steps>
+
+## Docker Development (Alternative)
+
+If you prefer to run everything in Docker:
+
+<Steps>
+  <Step title="Build the API container">
+    ```bash
+    cd athena-api
+    docker build -t athena-api:dev .
+    ```
+  </Step>
+  
+  <Step title="Run with Docker Compose">
+    Create a `docker-compose.override.yml` for the API service:
+    
+    ```yaml
+    services:
+      api:
+        image: athena-api:dev
+        ports:
+          - "8000:8000"
+        environment:
+          - DATABASE_URL=postgresql+asyncpg://athena:athena_dev@db:5432/athena_db
+        depends_on:
+          db:
+            condition: service_healthy
+    ```
+    
+    Start everything:
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Backend Development
+
+The backend uses FastAPI with hot-reload enabled:
+
+```bash
+# Start with auto-reload
+uvicorn app.main:app --reload
+
+# Run tests
+pytest
+
+# Run linter
+ruff check app/
+
+# Create a new migration
+alembic revision --autogenerate -m "Add new field"
+```
+
+### Frontend Development
+
+The frontend uses Vite with HMR (Hot Module Replacement):
+
+```bash
+# Start dev server
+npm run dev
+
+# Type checking
+npm run lint
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    If port 8000 or 3000 is already in use:
+    
+    **Backend:**
+    ```bash
+    uvicorn app.main:app --reload --port 8001
+    ```
+    
+    **Frontend:**
+    ```bash
+    npm run dev -- --port 3001
+    ```
+    
+    Update `CORS_ORIGINS` in backend `.env` and `VITE_API_URL` in frontend `.env` accordingly.
+  </Accordion>
+  
+  <Accordion title="Database connection failed">
+    Ensure PostgreSQL is running:
+    
+    ```bash
+    docker compose ps db
+    # Should show 'running' status
+    
+    # Check logs
+    docker compose logs db
+    
+    # Test connection
+    docker compose exec db psql -U athena -d athena_db -c "SELECT version();"
+    ```
+    
+    If using external PostgreSQL, verify:
+    - PostgreSQL service is running
+    - Database `athena_db` exists
+    - User `athena` has proper permissions
+    - `DATABASE_URL` in `.env` is correct
+  </Accordion>
+  
+  <Accordion title="Migration errors">
+    If migrations fail:
+    
+    ```bash
+    # Check current migration version
+    alembic current
+    
+    # View migration history
+    alembic history
+    
+    # Rollback one migration
+    alembic downgrade -1
+    
+    # Re-run migrations
+    alembic upgrade head
+    ```
+    
+    For a fresh start:
+    ```bash
+    # WARNING: This deletes all data
+    docker compose down -v
+    docker compose up -d db
+    alembic upgrade head
+    ```
+  </Accordion>
+  
+  <Accordion title="Module not found errors (Python)">
+    Ensure you're in the correct directory and the package is installed:
+    
+    ```bash
+    cd athena-api
+    pip install -e .
+    
+    # Verify installation
+    pip list | grep athena
+    ```
+  </Accordion>
+  
+  <Accordion title="CORS errors in browser">
+    CORS errors occur when the frontend origin isn't whitelisted. Update backend `.env`:
+    
+    ```bash
+    CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000
+    ```
+    
+    Restart the API server after changing `.env`.
+  </Accordion>
+  
+  <Accordion title="Frontend build errors">
+    Clear node modules and reinstall:
+    
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+    
+    Verify Node.js version:
+    ```bash
+    node --version  # Should be 18.x or 20.x
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Database Management
+
+### Accessing the Database
+
+**Via Docker:**
+```bash
+docker compose exec db psql -U athena -d athena_db
+```
+
+**Via pgAdmin:**
+Access [http://localhost:5050](http://localhost:5050) (if started with `--profile tools`)
+
+### Useful SQL Commands
+
+```sql
+-- List all tables
+\dt
+
+-- View schools
+SELECT id, name, nit FROM schools;
+
+-- View users
+SELECT id, email, full_name FROM users;
+
+-- Count students per school
+SELECT school_id, COUNT(*) as student_count 
+FROM students 
+GROUP BY school_id;
+
+-- View recent enrollments
+SELECT * FROM enrollments 
+ORDER BY created_at DESC 
+LIMIT 10;
+```
+
+### Backup and Restore
+
+**Backup:**
+```bash
+docker compose exec db pg_dump -U athena athena_db > backup.sql
+```
+
+**Restore:**
+```bash
+docker compose exec -T db psql -U athena athena_db < backup.sql
+```
+
+## Environment Variables Reference
+
+### Backend (athena-api)
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `ENVIRONMENT` | Deployment environment | `development` | No |
+| `DATABASE_URL` | PostgreSQL connection string | See .env.example | Yes |
+| `JWT_SECRET` | Secret key for signing JWTs | - | Yes |
+| `JWT_ALGORITHM` | JWT algorithm | `HS256` | No |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration | `30` | No |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `http://localhost:3000` | Yes |
+| `SUPABASE_URL` | Supabase project URL | - | No |
+| `SUPABASE_ANON_KEY` | Supabase anonymous key | - | No |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | - | No |
+| `R2_ENDPOINT_URL` | Cloudflare R2 endpoint | - | No |
+| `R2_ACCESS_KEY_ID` | R2 access key | - | No |
+| `R2_SECRET_ACCESS_KEY` | R2 secret key | - | No |
+| `R2_BUCKET_NAME` | R2 bucket name | `athena-docs` | No |
+| `SENTRY_DSN` | Sentry error tracking DSN | - | No |
+
+### Frontend (athena-front)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_API_URL` | Backend API URL | Yes |
+| `VITE_SUPABASE_URL` | Supabase project URL | No |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | No |
+
+## Next Steps
+
+Now that you have Athena ERP installed:
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Create your first school and enroll students
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore all available endpoints
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/admin/settings">
+    Configure roles, permissions, and settings
+  </Card>
+  
+  <Card title="Production Deployment" icon="server" href="/deployment/overview">
+    Deploy to Railway, GCP, or your own infrastructure
+  </Card>
+</CardGroup>
+
+## Development Resources
+
+- **FastAPI Documentation**: [https://fastapi.tiangolo.com](https://fastapi.tiangolo.com)
+- **SQLAlchemy 2.0**: [https://docs.sqlalchemy.org/en/20/](https://docs.sqlalchemy.org/en/20/)
+- **React 19**: [https://react.dev](https://react.dev)
+- **Vite**: [https://vitejs.dev](https://vitejs.dev)
+- **TailwindCSS**: [https://tailwindcss.com](https://tailwindcss.com)
+- **Supabase**: [https://supabase.com/docs](https://supabase.com/docs)

@@ -1,0 +1,203 @@
+---
+title: "Create Enrollment"
+api: "POST /api/enrollments"
+description: "Create a new enrollment for an existing student in a specific school year"
+---
+
+## Request Body
+
+<ParamField body="student_id" type="uuid" required>
+  ID of the existing student to enroll
+</ParamField>
+
+<ParamField body="school_year_id" type="uuid" required>
+  ID of the school year for this enrollment
+</ParamField>
+
+<ParamField body="grade_level" type="string" required>
+  Grade level for the enrollment (e.g., "1°", "2°", "10°", "11°")
+</ParamField>
+
+<ParamField body="group_code" type="string">
+  Group or class code (e.g., "A", "B", "1A")
+</ParamField>
+
+<ParamField body="shift" type="string">
+  School shift (e.g., "morning", "afternoon", "evening")
+</ParamField>
+
+<ParamField body="status" type="string" default="pending_documents">
+  Initial enrollment status. Common values:
+  - `pending_documents` - Awaiting document submission
+  - `active` - Enrollment is active
+  - `completed` - Enrollment completed
+</ParamField>
+
+<ParamField body="simat_status" type="object">
+  SIMAT (Colombian education system) status data
+</ParamField>
+
+<ParamField body="extra_data" type="object">
+  Additional custom data for the enrollment
+</ParamField>
+
+## Response
+
+Returns the created enrollment object with all fields populated.
+
+<ResponseField name="id" type="uuid">
+  Unique enrollment identifier
+</ResponseField>
+
+<ResponseField name="school_id" type="uuid">
+  School identifier
+</ResponseField>
+
+<ResponseField name="student_id" type="uuid">
+  Student identifier
+</ResponseField>
+
+<ResponseField name="school_year_id" type="uuid">
+  School year identifier
+</ResponseField>
+
+<ResponseField name="grade_level" type="string">
+  Grade level
+</ResponseField>
+
+<ResponseField name="group_code" type="string" nullable>
+  Group or class code
+</ResponseField>
+
+<ResponseField name="shift" type="string" nullable>
+  School shift
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current enrollment status
+</ResponseField>
+
+<ResponseField name="status_history" type="array">
+  Array of status changes with timestamp and user who made the change
+</ResponseField>
+
+<ResponseField name="simat_status" type="object">
+  SIMAT status data
+</ResponseField>
+
+<ResponseField name="extra_data" type="object">
+  Additional custom data
+</ResponseField>
+
+<ResponseField name="student_name" type="string">
+  Full name of the student
+</ResponseField>
+
+<ResponseField name="school_year_name" type="string">
+  Name of the school year
+</ResponseField>
+
+<ResponseField name="documents" type="array">
+  Array of enrollment documents (empty for new enrollments)
+</ResponseField>
+
+<ResponseField name="created_at" type="datetime">
+  Timestamp when the enrollment was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="datetime">
+  Timestamp when the enrollment was last updated
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://api.athena-erp.com/api/enrollments" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "school_year_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "grade_level": "10°",
+    "group_code": "A",
+    "shift": "morning",
+    "status": "pending_documents"
+  }'
+```
+
+```bash With Extra Data
+curl -X POST "https://api.athena-erp.com/api/enrollments" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "school_year_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "grade_level": "11°",
+    "group_code": "B",
+    "shift": "morning",
+    "status": "pending_documents",
+    "extra_data": {
+      "special_needs": false,
+      "transportation": "school_bus"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "school_id": "550e8400-e29b-41d4-a716-446655440000",
+  "student_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "school_year_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "grade_level": "10°",
+  "group_code": "A",
+  "shift": "morning",
+  "status": "pending_documents",
+  "status_history": [
+    {
+      "status": "pending_documents",
+      "changed_at": "2024-01-15T10:30:00Z",
+      "changed_by": "d4e5f6a7-b8c9-0123-def1-234567890123"
+    }
+  ],
+  "simat_status": {},
+  "extra_data": {},
+  "student_name": "Juan Pérez García",
+  "school_year_name": "2024",
+  "documents": [],
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+```json 404 Student Not Found
+{
+  "detail": "Estudiante no encontrado en este colegio"
+}
+```
+
+```json 404 School Year Not Found
+{
+  "detail": "Año escolar no encontrado"
+}
+```
+
+```json 409 Duplicate Enrollment
+{
+  "detail": "El estudiante ya tiene matrícula para ese año escolar"
+}
+```
+</ResponseExample>
+
+## Validation Rules
+
+- The student must exist and belong to the school
+- The school year must exist and belong to the school
+- A student cannot have multiple enrollments for the same school year
+- The status will be automatically tracked in the `status_history` array
+
+## Permissions Required
+
+- `write:enrollment`
+- `write:all`
