@@ -287,9 +287,15 @@ python scripts/create_superadmin.py
 
 For testing:
 
+Use the superadmin creation script to set up your first user:
+
 ```bash
-# TODO: Add sample data script
-# This would create sample schools, students, grades, etc.
+cd athena-api
+PYTHONPATH=. python scripts/create_superadmin.py \
+  --id $(uuidgen) \
+  --email admin@example.com \
+  --full-name "System Administrator" \
+  --membership-roles superadmin
 ```
 
 ---
