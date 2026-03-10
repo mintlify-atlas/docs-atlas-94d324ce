@@ -1,0 +1,228 @@
+{
+  "projectType": "saas",
+  "projectName": "Athena ERP",
+  "projectDescription": "School management system (ERP) for Colombian educational institutions with enrollment, academic tracking, discipline management, and communications.",
+  "theme": "linden",
+  "primaryColor": "#2563eb",
+  "lightColor": "#60a5fa",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/enrollment",
+              "features/students",
+              "features/academic",
+              "features/discipline",
+              "features/communications"
+            ]
+          },
+          {
+            "group": "User Roles",
+            "pages": [
+              "roles/overview",
+              "roles/rector",
+              "roles/coordinator",
+              "roles/secretary",
+              "roles/teacher",
+              "roles/student"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "admin/school-management",
+              "admin/users",
+              "admin/school-years",
+              "admin/settings"
+            ]
+          },
+          {
+            "group": "Colombian Compliance",
+            "pages": [
+              "compliance/overview",
+              "compliance/simat",
+              "compliance/habeas-data",
+              "compliance/decree-1290"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/auth/overview",
+              "api/auth/supabase-integration"
+            ]
+          },
+          {
+            "group": "Enrollments",
+            "pages": [
+              "api/enrollments/list",
+              "api/enrollments/create",
+              "api/enrollments/get",
+              "api/enrollments/update",
+              "api/enrollments/documents"
+            ]
+          },
+          {
+            "group": "Students",
+            "pages": [
+              "api/students/list",
+              "api/students/create",
+              "api/students/get",
+              "api/students/update",
+              "api/students/bulk-upload"
+            ]
+          },
+          {
+            "group": "Academic",
+            "pages": [
+              "api/academic/subjects",
+              "api/academic/grades",
+              "api/academic/attendance",
+              "api/academic/study-plans"
+            ]
+          },
+          {
+            "group": "Discipline",
+            "pages": [
+              "api/discipline/cases",
+              "api/discipline/events",
+              "api/discipline/due-process"
+            ]
+          },
+          {
+            "group": "Communications",
+            "pages": [
+              "api/communications/circulars"
+            ]
+          },
+          {
+            "group": "Schools",
+            "pages": [
+              "api/schools/list",
+              "api/schools/create",
+              "api/schools/settings"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "architecture/stack",
+              "architecture/database",
+              "architecture/multi-tenancy"
+            ]
+          },
+          {
+            "group": "Backend",
+            "pages": [
+              "architecture/backend/fastapi",
+              "architecture/backend/sqlalchemy",
+              "architecture/backend/permissions"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "pages": [
+              "architecture/frontend/react",
+              "architecture/frontend/routing",
+              "architecture/frontend/state-management"
+            ]
+          },
+          {
+            "group": "Infrastructure",
+            "pages": [
+              "architecture/infrastructure/supabase",
+              "architecture/infrastructure/railway",
+              "architecture/infrastructure/cloudflare-r2"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "deployment/overview",
+              "deployment/environment-variables"
+            ]
+          },
+          {
+            "group": "Services",
+            "pages": [
+              "deployment/backend",
+              "deployment/frontend",
+              "deployment/database"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-tenant school management with tenant isolation",
+    "Enrollment management with document upload to R2",
+    "Student profiles with guardian relationships",
+    "Academic tracking (subjects, grades, attendance, study plans)",
+    "Discipline case management with due process workflow",
+    "Circular broadcast communications system",
+    "Role-based access control (RBAC) with 7 roles",
+    "SIMAT export for Colombian regulatory compliance",
+    "Supabase authentication with JWT validation",
+    "Habeas Data compliance (Ley 1581/2012)"
+  ],
+  "publicApiSurface": [
+    "POST /auth/me - Get authenticated user profile",
+    "GET /enrollments - List enrollments",
+    "POST /enrollments - Create enrollment",
+    "POST /enrollments/full - Create enrollment with new student",
+    "GET /enrollments/{id} - Get enrollment details",
+    "PATCH /enrollments/{id} - Update enrollment",
+    "DELETE /enrollments/{id} - Delete enrollment",
+    "POST /enrollments/{id}/documents - Upload enrollment document",
+    "GET /enrollments/{id}/documents/content - Download enrollment document",
+    "GET /students - List students",
+    "POST /students - Create student",
+    "POST /students/bulk - Bulk upload students from CSV",
+    "GET /students/{id} - Get student details",
+    "PATCH /students/{id} - Update student",
+    "GET /academic/subjects - List subjects",
+    "POST /academic/subjects - Create subject",
+    "GET /academic/grades - List grades",
+    "POST /academic/grades - Record grade",
+    "GET /academic/attendance - List attendance records",
+    "POST /academic/attendance - Record attendance",
+    "GET /discipline/cases - List discipline cases",
+    "POST /discipline/cases - Create discipline case",
+    "POST /discipline/cases/{id}/events - Add event to case",
+    "GET /communications/circulars - List circulars",
+    "POST /communications/circulars - Create circular",
+    "GET /schools - List schools (superadmin)",
+    "POST /schools - Create school (superadmin)",
+    "GET /schools/{id}/settings - Get school settings",
+    "PUT /schools/{id}/settings - Update school settings"
+  ]
+}
